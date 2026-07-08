@@ -2716,86 +2716,6 @@ async function eliminarGestion(ventaId, gestionId) {
   renderDeudores();
 }
 
-const CLIENTES_A_IMPORTAR = [{"codigo": 1, "nombre": "CONSUMIDOR FINAL"}, {"codigo": 2, "nombre": "SECURITY SUPPLY S.A."}, {"codigo": 3, "nombre": "CONFECAT S.A."}, {"codigo": 4, "nombre": "BORIS HNOS. S.A."}, {"codigo": 5, "nombre": "Borcal S.A."}, {"codigo": 6, "nombre": "MACSI S.A."}, {"codigo": 9, "nombre": "Segucal  S.R.L."}, {"codigo": 10, "nombre": "Vicla S.A."}, {"codigo": 13, "nombre": "DAMALU S.R.L."}, {"codigo": 17, "nombre": "MAINCAL S.A."}, {"codigo": 21, "nombre": "HECTOR FACUNDO QUIROGA"}, {"codigo": 25, "nombre": "RENDA GLADYS PATRICIA"}, {"codigo": 27, "nombre": "CALZADOS ARGENTINOS S.A."}, {"codigo": 30, "nombre": "BARBA CUSOT S.R.L."}, {"codigo": 31, "nombre": "INDUSTRIAS CONTARDO S.A.I.C."}, {"codigo": 36, "nombre": "UNPAR S.R.L."}, {"codigo": 39, "nombre": "COOP. DE TRABAJO DESDE EL PIE"}, {"codigo": 40, "nombre": "TAVIS de Tavitian Juan Carlos"}, {"codigo": 41, "nombre": "CEREMINATI LUIS ALBERTO CEREMINATI JORGE ENRIQUE"}, {"codigo": 45, "nombre": "SAFETY & STYLE S.R.L."}, {"codigo": 46, "nombre": "BOGOS S.R.L."}, {"codigo": 47, "nombre": "ALEMAN HUGO RAUL"}, {"codigo": 48, "nombre": "SOUTER S.A."}, {"codigo": 50, "nombre": "LUIS ERNESTO RODRIGUEZ"}, {"codigo": 52, "nombre": "FRANCISCO DEL BOCA"}, {"codigo": 55, "nombre": "METALURGICA RAULET SRL"}, {"codigo": 56, "nombre": "PEDRO SANGUINETTO"}, {"codigo": 57, "nombre": "MARCELO KALIK"}, {"codigo": 58, "nombre": "PATRICIA GARCIA"}, {"codigo": 59, "nombre": "ECSE S.R.L."}, {"codigo": 60, "nombre": "ARZOUMANIAN"}, {"codigo": 61, "nombre": "FRANCISCO CAPUANO"}, {"codigo": 63, "nombre": "CARLOS ALTAMIRANO"}, {"codigo": 64, "nombre": "ROZZANO CALZADOS"}, {"codigo": 65, "nombre": "CASA GREGORIO"}, {"codigo": 66, "nombre": "BE SAFE SAS"}, {"codigo": 67, "nombre": "ABANCUER"}, {"codigo": 68, "nombre": "TKW S.A."}, {"codigo": 69, "nombre": "ELMER ENRIQUE DIESTRA GIL"}, {"codigo": 70, "nombre": "FLAVIA OSCAREZ"}, {"codigo": 71, "nombre": "INDUSTRIALS IMPORTS S.A."}, {"codigo": 72, "nombre": "DIEDRICH EDUARDO EMMANUEL"}, {"codigo": 73, "nombre": "OSVHER SAS"}, {"codigo": 74, "nombre": "BOCAT S.A."}, {"codigo": 76, "nombre": "LUCAS RANZINI"}, {"codigo": 77, "nombre": "OPERACIONES ENTRE MONEDAS"}, {"codigo": 78, "nombre": "RESULTADOS FINANCIEROS EN PESOS"}, {"codigo": 79, "nombre": "RESULTADOS FINANCIEROS EN DOLARES"}, {"codigo": 81, "nombre": "INDEMNIZACIONES SEGUROS (ART)"}, {"codigo": 82, "nombre": "AJUSTE"}, {"codigo": 83, "nombre": "ADRIAN LASALA"}, {"codigo": 84, "nombre": "PRESTAMOS ETA"}, {"codigo": 85, "nombre": "CHARS S.R.L."}, {"codigo": 86, "nombre": "COOPECAL"}, {"codigo": 88, "nombre": "M.E. SAS"}, {"codigo": 89, "nombre": "BANCO GALICIA"}, {"codigo": 90, "nombre": "INDUSTRIAS PULQUI S.A."}, {"codigo": 91, "nombre": "SANDRA FRATTINI"}, {"codigo": 92, "nombre": "MAXIMILIANO SABIA"}, {"codigo": 93, "nombre": "PALUBEL S.R.L."}, {"codigo": 94, "nombre": "COOP. PRIMER PUEBLO PATRIO LIMITADA"}, {"codigo": 95, "nombre": "EMANUEL DAMIAN SZOT"}, {"codigo": 96, "nombre": "PATRICIO ALEJANDRO CARRIZO"}, {"codigo": 98, "nombre": "DUNTOP S.R.L"}, {"codigo": 99, "nombre": "BUSTIN SOLUCIONES INDUSTRIALES S.A"}, {"codigo": 100, "nombre": "CON ARGENTINA S.R.L"}, {"codigo": 101, "nombre": "P&M INDUSTRIAL S.A."}, {"codigo": 102, "nombre": "INDUSTRIAS GEO S.A."}, {"codigo": 103, "nombre": "DENEB S.A."}, {"codigo": 104, "nombre": "GRUPO COSMETICA S.A."}, {"codigo": 105, "nombre": "BANCO CREDICOOP"}, {"codigo": 106, "nombre": "GRUPO IAN DELTA S.R.L"}, {"codigo": 107, "nombre": "MARASCO JUAN IGNACIO"}, {"codigo": 108, "nombre": "SERGIO MARCELO VENTURA"}, {"codigo": 109, "nombre": "GILBERTO MOREL SAMUDIO"}, {"codigo": 110, "nombre": "RAWAI S.A."}, {"codigo": 111, "nombre": "CALZADOS OLMOS"}, {"codigo": 112, "nombre": "PUNTO MEDIO CLIMATIZACION S.A."}, {"codigo": 113, "nombre": "MARCO VALLANA ACCESORIOS INDUSTRIALES S.R.L,"}, {"codigo": 114, "nombre": "PASTALINDA SOCIEDAD ANONIMA"}, {"codigo": 115, "nombre": "TEXAS CONTROLS INDUSTRIAL S.A.S"}, {"codigo": 116, "nombre": "ACEROS COMECO S.A"}, {"codigo": 117, "nombre": "UNO EN UNO CONSTRUCCIONES S.A."}, {"codigo": 118, "nombre": "TECMADE S.A."}, {"codigo": 119, "nombre": "CHR HANSEN ARGENTINA S A I C"}, {"codigo": 120, "nombre": "DIEGO BENTO"}, {"codigo": 121, "nombre": "MONTIK S.R.L"}, {"codigo": 122, "nombre": "CALZADOS CABURE S.R.L"}, {"codigo": 123, "nombre": "HERCAL"}, {"codigo": 124, "nombre": "CAL.SEG.IND. S.A."}, {"codigo": 125, "nombre": "COMERCIAL ARGENTINA S.R.L"}, {"codigo": 126, "nombre": "AGROCOMERCIAL Y MINERIA MES-OR S.R.L."}, {"codigo": 127, "nombre": "DAGFAL SRL"}, {"codigo": 128, "nombre": "BIOGAS SRL"}, {"codigo": 129, "nombre": "TRANSLOG SA"}, {"codigo": 130, "nombre": "WORK SHEOS S.R.L."}, {"codigo": 131, "nombre": "ROZAS DE MADRID"}, {"codigo": 132, "nombre": "TECNOBOOT ARGENTINA S.R.L"}, {"codigo": 133, "nombre": "INTEGRAL WORK S.R.L."}, {"codigo": 136, "nombre": "BLADIMIRO BORIS S. A."}, {"codigo": 140, "nombre": "NELIDA DORA SORAIDE"}, {"codigo": 144, "nombre": "INDUSTRIA SEGUTEK S.A."}, {"codigo": 156, "nombre": "GLOBE TRACK S.A."}, {"codigo": 161, "nombre": "COOP.DE TRABAJO POSTA DE S.MAR"}, {"codigo": 163, "nombre": "CHILCAL S.A."}, {"codigo": 171, "nombre": "BOTECCHIA Angel Jose Pedro"}, {"codigo": 173, "nombre": "SEKURITY LEATHER S.A."}, {"codigo": 175, "nombre": "CALZADOS CUYO S.A."}, {"codigo": 182, "nombre": "CALZADOS CON TECNOLOGIA S.A."}, {"codigo": 183, "nombre": "STARTEX S.A."}, {"codigo": 184, "nombre": "FABI-LOR E Hijos SRL."}, {"codigo": 188, "nombre": "LAKE INTERNATIONAL"}, {"codigo": 193, "nombre": "JUANLENOI SRL"}, {"codigo": 194, "nombre": "CALZADOS DUROTECH SRL"}, {"codigo": 195, "nombre": "SIMON SRL."}, {"codigo": 196, "nombre": "BLACK QUEEN SRL."}, {"codigo": 198, "nombre": "INDUMENTARIA PROACTIVA RASA S.A."}, {"codigo": 199, "nombre": "NEBCO INC SRL."}, {"codigo": 200, "nombre": "INDUSTRIAS LT. SRL."}, {"codigo": 217, "nombre": "CHAMORRO MARCELO ADRIAN"}, {"codigo": 224, "nombre": "INTEGRAL KA S.A."}, {"codigo": 226, "nombre": "GAMAX S.A."}, {"codigo": 237, "nombre": "TRUEBA DANIEL ALEJANDRO"}, {"codigo": 238, "nombre": "Safety Shoes S.R.L"}, {"codigo": 239, "nombre": "METALURGICA AG S.R.L"}, {"codigo": 240, "nombre": "BERTINI CAMILA MICHELLE"}, {"codigo": 241, "nombre": "CALVIC S.A."}, {"codigo": 247, "nombre": "MACIEL REYES MARIO ORLANDO"}, {"codigo": 251, "nombre": "SEGUMAT S.A"}, {"codigo": 252, "nombre": "ASOCIACION MUTUAL SOLIDARIA POLICIAL"}, {"codigo": 255, "nombre": "WARMA S.A."}, {"codigo": 256, "nombre": "PECHENY MONICA INES"}, {"codigo": 257, "nombre": "RAFAEL DEL CORRO"}, {"codigo": 259, "nombre": "INDUSTRIA ETA"}];
-
-async function importarClientesSemilla() {
-  let flag = null;
-  try {
-    flag = await window.storage.get('seed_ctes_importado', false);
-  } catch (e) { flag = null; }
-  if (flag) return;
-
-  const existentes = new Set(clientes.map(c => c.nombre.trim().toLowerCase()));
-  let agregados = 0;
-  CLIENTES_A_IMPORTAR.forEach(item => {
-    const nombre = item.nombre.trim();
-    if (!nombre || existentes.has(nombre.toLowerCase())) return;
-    clientes.push({
-      id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      nombre,
-      telefono: '',
-      cuit: '',
-      email: '',
-      notas: 'Codigo de cliente (sistema anterior): ' + item.codigo
-    });
-    existentes.add(nombre.toLowerCase());
-    agregados++;
-  });
-
-  if (agregados > 0) {
-    await guardarClientesEnStorage();
-    actualizarDatalistClientes();
-    mostrarAviso('Se importaron ' + agregados + ' clientes desde la base historica.', null, true);
-  }
-  try {
-    await window.storage.set('seed_ctes_importado', 'true', false);
-  } catch (e) { /* noop */ }
-}
-
-const PROMEDIOS_A_IMPORTAR = [{"nombre": "STARTEX S.A.", "estimado": 16286}, {"nombre": "MACSI S.A.", "estimado": 7600}, {"nombre": "ECSE S.R.L.", "estimado": 7511}, {"nombre": "FABI-LOR E Hijos SRL.", "estimado": 5657}, {"nombre": "BLADIMIRO BORIS S. A.", "estimado": 3527}, {"nombre": "GAMAX S.A.", "estimado": 4133}, {"nombre": "INDUSTRIA SEGUTEK S.A.", "estimado": 9263}, {"nombre": "BORIS HNOS. S.A.", "estimado": 10700}, {"nombre": "CHARS S.R.L.", "estimado": 5313}, {"nombre": "DAMALU S.R.L.", "estimado": 3513}, {"nombre": "BOCAT S.A.", "estimado": 7227}, {"nombre": "CALZADOS ARGENTINOS S.A.", "estimado": 1856}, {"nombre": "ARZOUMANIAN", "estimado": 1467}, {"nombre": "GLOBE TRACK S.A.", "estimado": 1200}, {"nombre": "Vicla S.A.", "estimado": 1840}, {"nombre": "CALZADOS CUYO S.A.", "estimado": 1314}, {"nombre": "DENEB S.A.", "estimado": 8693}, {"nombre": "CHILCAL S.A.", "estimado": 5000}, {"nombre": "SILVIA ESTER BAILIN", "estimado": 2150}, {"nombre": "DUNTOP S.R.L", "estimado": 1450}, {"nombre": "FRANCISCO DEL BOCA", "estimado": 900}, {"nombre": "BOGOS S.R.L.", "estimado": 3500}, {"nombre": "OSVHER SAS", "estimado": 483}, {"nombre": "PATRICIA GARCIA", "estimado": 675}, {"nombre": "SIMON SRL.", "estimado": 3320}, {"nombre": "INDUSTRIAS CONTARDO S.A.I.C.", "estimado": 2300}, {"nombre": "TRUEBA DANIEL ALEJANDRO", "estimado": 350}, {"nombre": "INTEGRAL KA S.A.", "estimado": 1871}, {"nombre": "Borcal S.A.", "estimado": 1877}, {"nombre": "BERTINI CAMILA MICHELLE", "estimado": 4500}];
-
-async function importarPromediosSemilla() {
-  let flag = null;
-  try {
-    flag = await window.storage.get('seed_promedios_importado', false);
-  } catch (e) { flag = null; }
-  if (flag) return;
-
-  let actualizados = 0;
-  let creados = 0;
-  PROMEDIOS_A_IMPORTAR.forEach(item => {
-    const nombre = item.nombre.trim();
-    if (!nombre) return;
-    const existente = clientes.find(c => c.nombre.trim().toLowerCase() === nombre.toLowerCase());
-    if (existente) {
-      if (existente.estimado_mensual == null) {
-        existente.estimado_mensual = item.estimado;
-        actualizados++;
-      }
-    } else {
-      clientes.push({
-        id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-        nombre,
-        telefono: '',
-        cuit: '',
-        email: '',
-        estimado_mensual: item.estimado,
-        notas: ''
-      });
-      creados++;
-    }
-  });
-
-  if (actualizados > 0 || creados > 0) {
-    await guardarClientesEnStorage();
-    actualizarDatalistClientes();
-    mostrarAviso(`Promedios de compra cargados: ${actualizados} clientes actualizados, ${creados} nuevos.`, null, true);
-  }
-  try {
-    await window.storage.set('seed_promedios_importado', 'true', false);
-  } catch (e) { /* noop */ }
-}
-
 async function cargarClientes() {
   try {
     const result = await window.storage.get('clientes', false);
@@ -2808,8 +2728,6 @@ async function cargarClientes() {
     if (!c.movimientos_saldo) c.movimientos_saldo = [];
   });
   actualizarDatalistClientes();
-  await importarClientesSemilla();
-  await importarPromediosSemilla();
   if ($('viewClientes').style.display !== 'none') renderClientes();
 }
 
@@ -3257,40 +3175,6 @@ $('btnCancelarCliente').addEventListener('click', cerrarFormularioCliente);
 $('btnGuardarCliente').addEventListener('click', guardarCliente);
 $('buscadorClientes').addEventListener('input', renderClientes);
 
-const PRODUCTOS_A_IMPORTAR = ["PUNT. ACERO C/PESTAÑA 04-6", "PUNT. ACERO C/PESTAÑA 04-7", "PUNT. ACERO C/PESTAÑA 04-8", "PUNT. ACERO C/PESTAÑA 04-9", "PUNT. ACERO C/PESTAÑA 04-10", "PUNT. ACERO C/PESTAÑA 04-11", "PUNT. ACERO C/PESTAÑA 04-12", "PUNTERAS ACERO EN FABRICACION", "PUNT. ACERO C/PESTAÑA 59-1", "PUNT. ACERO C/PESTAÑA 59-2", "PUNT. ACERO C/PESTAÑA 59-6", "PUNT. ACERO C/PESTAÑA 59-7", "PUNT. ACERO C/PESTAÑA 59-8", "PUNT. ACERO C/PESTAÑA 59-9", "PUNT. ACERO C/PESTAÑA 59-10", "PUNT. ACERO C/PESTAÑA 59-11", "PUNT. ACERO C/PESTAÑA 17-2", "PUNT. ACERO C/PESTAÑA 17-6", "PUNT. ACERO C/PESTAÑA 17-7", "PUNT. ACERO C/PESTAÑA 17-8", "PUNT. ACERO C/PESTAÑA 17-10", "PUNT. ACERO C/PESTAÑA 17-9", "PUNT. ACERO C/PESTAÑA 17-11", "PUNT. ACERO C/PESTAÑA 88-3", "PUNT. ACERO C/PESTAÑA 88-7", "PUNT. ACERO C/PESTAÑA 88-8", "PUNT. ACERO C/PESTAÑA 88-9", "PUNT. ACERO C/PESTAÑA 88-10", "PUNT. ACERO C/PESTAÑA 88-11", "PUNT. ACERO C/PESTAÑA 75-6", "PUNT. ACERO C/PESTAÑA 75-7", "PUNT. ACERO C/PESTAÑA 75-8", "PUNT. ACERO C/PESTAÑA 75-9", "PUNT. ACERO C/PESTAÑA 75-10", "PUNT. ACERO C/PESTAÑA 75-11", "PUNT. ACERO C/PESTAÑA 75-12", "PUNT. ACERO C/PESTAÑA BR-1", "PUNT. ACERO C/PESTAÑA BR-6", "PUNT. ACERO C/PESTAÑA BR-7", "PUNT. ACERO C/PESTAÑA BR-8", "PUNT. ACERO C/PESTAÑA BR-9", "PUNT. ACERO C/PESTAÑA BR-10", "PUNT. ACERO C/PESTAÑA 60-7", "PUNT. ACERO C/PESTAÑA 60-8", "PUNT. ACERO C/PESTAÑA 60-9", "PUNT. ACERO C/PESTAÑA 60-10", "PUNT. ACERO C/PESTAÑA SR-6", "PUNT. ACERO C/PESTAÑA SR-7", "PUNT. ACERO C/PESTAÑA SR-8", "PUNT. ACERO C/PESTAÑA SR-9", "PUNT. ACERO C/PESTAÑA 58-7", "PUNT. ACERO C/PESTAÑA 58-8", "PUNT. ACERO C/PESTAÑA 58-9", "PUNT. ACERO C/PESTAÑA 58-10", "PUNT. ACERO C/PESTAÑA 58-11", "PUNT. ACERO C/PESTAÑA 12-1", "PUNT. ACERO C/PESTAÑA 12-2", "PUNT. ACERO C/PESTAÑA 12-3", "PUNT. ACERO C/PESTAÑA 12-6", "PUNT. ACERO C/PESTAÑA 12-7", "PUNT. ACERO C/PESTAÑA 12-8", "PUNT. ACERO C/PESTAÑA 12-9", "PUNT. ACERO 04-6", "PUNT. ACERO 04-7", "PUNT. ACERO 04-8", "PUNT. ACERO 04-9", "PUNT. ACERO 04-10", "PUNT. ACERO 04-11", "PUNT. ACERO 04-12", "PUNT. ACERO 58-7", "PUNT. ACERO 58-8", "PUNT. ACERO 58-9", "PUNT. ACERO 58-10", "PUNT. ACERO 58-11", "PUNT. ACERO 75.6", "PUNT. ACERO 75.7", "PUNT. ACERO 75.8", "PUNT. ACERO 75.9", "PUNT. ACERO 75.10", "PUNT. ACERO 75.11", "PUNT. ACERO 75.12", "PUNT. ACERO DIELECTRICA C/PESTAÑA", "PUNT. ACERO C/PESTAÑA 16-2", "PUNT. ACERO 12-6", "PUNT. ACERO 12-7", "PUNT. ACERO 12-8", "PUNT. ACERO 12-9", "PUNT. ACERO DIELECTRICA 04-9", "PUNT. ACERO DIELECTRICA 04-10", "PUNT. ACERO DIELECTRICA 04-11", "PUNT. ACERO DIELECTRICA 04-12", "PUNT. ACERO DIELECTRICA 04-7", "PUNT. ACERO DIELECTRICA 04-8", "PUNT. ACERO DIELECTRICA 04-6", "PUNT. ACERO C/PESTAÑA 1130-6", "PUNT. ACERO C/PESTAÑA 1130-7", "PUNT. ACERO C/PESTAÑA 1130-8", "PUNT. ACERO C/PESTAÑA 1130-9", "PUNT. ACERO C/PESTAÑA 1130-10", "PUNT. ACERO C/PESTAÑA 1130-11", "PUNT. ACERO C/PESTAÑA 559-7", "PUNT. ACERO C/PESTAÑA 559-8", "PUNT. ACERO C/PESTAÑA 559-9", "PUNT. ACERO C/PESTAÑA 559-10", "PUNT. ACERO C/PESTAÑA 559-11", "PUNT. ACERO C/PESTAÑA 117-8", "PUNT. ACERO C/PESTAÑA 117-9", "PUNT. ACERO C/PESTAÑA 117-10", "PUNT. ACERO C/PESTAÑA 604-8", "PUNT. ACERO C/PESTAÑA 604-9", "PUNT. ACERO C/PESTAÑA 604-10", "PUNT. ACERO 604-8", "PUNT. ACERO 604-9", "PUNT. ACERO 604-10", "PUNT. ACERO 558-8", "PUNT. ACERO 558-9", "PUNT. ACERO 558-10", "PUNT. ACERO 558-11", "PUNT. COMPOSITE 130-7", "PUNT. COMPOSITE 130-8", "PUNT. COMPOSITE 130-9", "PUNT. COMPOSITE 130-10", "PUNT. COMPOSITE 130-11", "PUNT. COMPOSITE 130-12", "PUNT. COMPOSITE 459-6", "PUNT. COMPOSITE 459-7", "PUNT. COMPOSITE 459-8", "PUNT. COMPOSITE 459-9", "PUNT. COMPOSITE RASA 130-7", "PUNT. COMPOSITE RASA 130-8", "PUNT. COMPOSITE RASA 130-9", "PUNT. COMPOSITE RASA 130-10", "PUNT. COMPOSITE RASA 130-11", "PUNT. COMPOSITE RASA 130-12", "PUNT. COMPOSITE 402-7", "PUNT. COMPOSITE 402-8", "PUNT. COMPOSITE 402-9", "PUNT. COMPOSITE 402-10", "PUNT. COMPOSITE 402-11", "PUNTERA DE VISITA", "PUNTERAS PLASTICAS N° 0", "PUNTERAS PLASTICAS N° 1", "PUNTERAS PLASTICAS N° 2", "PUNTERAS PLASTICAS N° 3", "PUNTERAS PLASTICAS N° 4", "PLANTILLAS N° 6", "PLANTILLAS N° 7", "PLANTILLAS N° 8", "PLANTILLAS N° 9", "PLANTILLAS N° 10", "PLANTILLAS N° 11", "PLANTILLA N°6 DIELECTRICA", "PLANTILLA N°7 DIELECTRICA", "PLANTILLA N°8 DIELECTRICA", "PLANTILLA N°9 DIELECTRICA", "PLANTILLA N°10 DIELECTRICA", "PLANTILLA N°11 DIELECTRICA", "PROTECTOR METATARSAL CHICO", "PROTECTOR METATARSAL GRANDE"];
-
-async function importarProductosSemilla() {
-  let flag = null;
-  try {
-    flag = await window.storage.get('seed_arti_importado', false);
-  } catch (e) { flag = null; }
-  if (flag) return;
-
-  const existentes = new Set(productos.map(p => p.nombre.trim().toLowerCase()));
-  let agregados = 0;
-  PRODUCTOS_A_IMPORTAR.forEach(nombreRaw => {
-    const nombre = nombreRaw.trim();
-    if (!nombre || existentes.has(nombre.toLowerCase())) return;
-    productos.push({
-      id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      nombre,
-      unidad: 'unidades',
-      notas: ''
-    });
-    existentes.add(nombre.toLowerCase());
-    agregados++;
-  });
-
-  if (agregados > 0) {
-    await guardarProductosEnStorage();
-    actualizarDatalistProductos();
-    mostrarAviso('Se importaron ' + agregados + ' productos desde el listado de stock.', null, true);
-  }
-  try {
-    await window.storage.set('seed_arti_importado', 'true', false);
-  } catch (e) { /* noop */ }
-}
-
 async function cargarProductos() {
   try {
     const result = await window.storage.get('productos', false);
@@ -3299,7 +3183,6 @@ async function cargarProductos() {
     productos = [];
   }
   actualizarDatalistProductos();
-  await importarProductosSemilla();
   if ($('viewProductos').style.display !== 'none') renderProductos();
 }
 
