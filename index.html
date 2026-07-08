@@ -1,0 +1,3350 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Facturación — Tacca Hnos.</title>
+
+<!-- ===== Conexión a Firebase (base de datos compartida) =====
+     Si en algún momento cambiás de proyecto de Firebase, actualizá
+     únicamente el objeto firebaseConfig más abajo con los datos
+     nuevos (Configuración del proyecto → Tus apps → apiKey, etc.) -->
+<script>
+  window.storageReady = new Promise((resolve) => { window._resolveStorageReady = resolve; });
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import { getDatabase, ref, get as dbGet, set as dbSet, remove as dbRemove } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDjLEEl6O8StDHUVWwEMR0E5n4iCyUBIZY",
+    authDomain: "control-ventas-y-cobranza-th.firebaseapp.com",
+    databaseURL: "https://control-ventas-y-cobranza-th-default-rtdb.firebaseio.com",
+    projectId: "control-ventas-y-cobranza-th",
+    storageBucket: "control-ventas-y-cobranza-th.firebasestorage.app",
+    messagingSenderId: "492777006198",
+    appId: "1:492777006198:web:9b7001fec1fa706ca2eb57"
+  };
+
+  function claveSegura(key) {
+    return String(key).replace(/[.#$\[\]/]/g, '_');
+  }
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    window.storage = {
+      async get(key) {
+        const snap = await dbGet(ref(db, 'data/' + claveSegura(key)));
+        if (!snap.exists()) return null;
+        return {key, value: snap.val(), shared: true};
+      },
+      async set(key, value) {
+        await dbSet(ref(db, 'data/' + claveSegura(key)), value);
+        return {key, value, shared: true};
+      },
+      async delete(key) {
+        await dbRemove(ref(db, 'data/' + claveSegura(key)));
+        return {key, deleted: true, shared: true};
+      },
+      async list() {
+        return {keys: []};
+      }
+    };
+  } catch (e) {
+    console.error('No se pudo conectar con Firebase:', e);
+  }
+
+  window._resolveStorageReady();
+</script>
+<!-- ===== Fin conexión a Firebase ===== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --graphite:#034AA6;
+    --graphite-2:#023B7D;
+    --accent-line:#023059;
+    --steel-bg:#E7EAE9;
+    --card:#FFFFFF;
+    --text:#1B2023;
+    --text-muted:#5C6B6E;
+    --hairline:#D3D8D7;
+    --orange:#C7431E;
+    --orange-bg:#FCE7DE;
+    --orange-text:#7A2A11;
+    --amber:#A8710A;
+    --amber-bg:#FBF0DA;
+    --amber-text:#6B4707;
+    --green:#2F8557;
+    --green-bg:#E1F1E7;
+    --green-text:#1E5C3B;
+    --blue:#2B6E7E;
+    --blue-bg:#E1EDEF;
+    --blue-text:#1B4B56;
+    --font-display: 'Oswald', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--steel-bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+  }
+  header.topbar{
+    background:var(--graphite);
+    color:#EDEFEE;
+    padding:1.75rem 1.5rem 1.5rem;
+    border-bottom:4px solid var(--accent-line);
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#9BA6A8;
+    margin:0 0 .25rem;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:.01em;
+    margin:0;
+  }
+  .header-inner{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .notif-dropdown{position:relative;}
+  .notif-bell{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.18);
+    color:#EDEFEE;
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    font-size:17px;
+    cursor:pointer;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .notif-bell:hover{background:rgba(255,255,255,.16);}
+  .notif-badge{
+    position:absolute;
+    top:-3px;
+    right:-3px;
+    background:var(--orange);
+    color:#fff;
+    font-size:10px;
+    font-weight:700;
+    min-width:17px;
+    height:17px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 4px;
+    font-family:var(--font-body);
+    border:2px solid var(--graphite);
+  }
+  .notif-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:calc(100% + 10px);
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.22);
+    width:340px;
+    max-width:88vw;
+    max-height:420px;
+    overflow-y:auto;
+    z-index:150;
+  }
+  .notif-menu.open{display:block;}
+  .notif-menu-header{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:14px;
+    color:var(--text);
+    padding:12px 14px 8px;
+    border-bottom:1px solid var(--hairline);
+    position:sticky;
+    top:0;
+    background:var(--card);
+  }
+  .notif-list{padding:6px;}
+  .notif-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    padding:9px 8px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .notif-item:hover{background:#EFF1F0;}
+  .notif-item-text{flex:1;min-width:0;}
+  .notif-item-msg{
+    font-size:12.5px;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .notif-item-fecha{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .notif-item-del{
+    display:none;
+    background:transparent;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:13px;
+    padding:4px 7px;
+    border-radius:5px;
+    flex-shrink:0;
+  }
+  .notif-item:hover .notif-item-del{display:block;}
+  .notif-item-del:hover{color:var(--orange);background:var(--orange-bg);}
+  .notif-empty{padding:22px 14px;text-align:center;color:var(--text-muted);font-size:12.5px;}
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:0 1.25rem 3rem;
+  }
+  .tabs-row{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:1.5rem;
+    border-bottom:1px solid var(--hairline);
+  }
+  .tabs{
+    display:flex;
+    gap:0;
+  }
+  .tab{
+    padding:10px 4px;
+    margin-right:24px;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:14px;
+    color:var(--text-muted);
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  .tab.active{color:var(--text);border-bottom-color:var(--accent-line);}
+  .tab-revision-btn{
+    margin-left:auto;
+    margin-right:0;
+    padding:8px 18px;
+    background:var(--graphite);
+    color:#fff;
+    border-radius:20px;
+    border-bottom:none;
+    font-size:13px;
+    align-self:center;
+  }
+  .tab-revision-btn:hover{background:var(--graphite-2);}
+  .tab-revision-btn.active{background:var(--orange);color:#fff;border-bottom:none;}
+
+  .datos-dropdown{position:relative;padding-bottom:8px;}
+  .datos-btn{
+    background:transparent;
+    border:none;
+    color:var(--text-muted);
+    font-family:var(--font-body);
+    font-size:12.5px;
+    cursor:pointer;
+    padding:6px 4px;
+  }
+  .datos-btn:hover{color:var(--text);}
+  .dropdown-menu{
+    display:none;
+    position:absolute;
+    right:0;
+    top:100%;
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:8px;
+    box-shadow:0 6px 18px rgba(0,0,0,.14);
+    padding:6px;
+    min-width:220px;
+    z-index:30;
+    margin-top:6px;
+  }
+  .dropdown-menu.open{display:block;}
+  .dropdown-menu button{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:transparent;
+    border:none;
+    padding:9px 10px;
+    border-radius:6px;
+    font-size:13px;
+    font-family:var(--font-body);
+    color:var(--text);
+    cursor:pointer;
+  }
+  .dropdown-menu button:hover{background:#EFF1F0;}
+
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+    margin-top:1.25rem;
+  }
+  .stat{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    padding:14px 16px;
+    box-shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  .stat .label{
+    font-size:12px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-weight:500;
+  }
+  .stat .value{
+    font-family:var(--font-mono);
+    font-size:22px;
+    font-weight:700;
+    margin-top:4px;
+  }
+  .stat.orange .value{color:var(--orange);}
+  .stat.amber .value{color:var(--amber);}
+  .stat.green .value{color:var(--green);}
+  .stat .sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin:1.75rem 0 1rem;
+    flex-wrap:wrap;
+  }
+  .toolbar input[type=text]{
+    flex:1;
+    min-width:180px;
+    padding:9px 12px;
+    border:1px solid var(--hairline);
+    border-radius:8px;
+    font-family:var(--font-body);
+    font-size:14px;
+    background:var(--card);
+  }
+  .toolbar input[type=date]{
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:8px;
+    font-family:var(--font-body);
+    font-size:13px;
+    background:var(--card);
+  }
+  .chip-group{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{
+    font-family:var(--font-body);
+    font-size:13px;
+    font-weight:500;
+    padding:7px 13px;
+    border-radius:20px;
+    border:1px solid var(--hairline);
+    background:var(--card);
+    color:var(--text-muted);
+    cursor:pointer;
+  }
+  .chip.active{
+    background:var(--graphite);
+    color:#fff;
+    border-color:var(--graphite);
+  }
+  button.primary{
+    background:var(--orange);
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  button.primary:hover{background:#A9370F;}
+  button.primary.green{background:var(--green);}
+  button.primary.green:hover{background:#256B45;}
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--hairline);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:8px;
+    font-family:var(--font-body);
+    font-size:13px;
+    cursor:pointer;
+  }
+  button.ghost:hover{background:#EFF1F0;}
+
+  .formpanel{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    padding:1.25rem;
+    margin-bottom:1.25rem;
+    display:none;
+  }
+  .formpanel.open{display:block;}
+  .formpanel h2{
+    font-family:var(--font-display);
+    font-size:17px;
+    font-weight:600;
+    margin:0 0 1rem;
+  }
+  .formgrid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+  }
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:12px;color:var(--text-muted);font-weight:500;}
+  .field input,.field select{
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-body);
+    font-size:14px;
+    background:#fff;
+  }
+  .field input[type=number]{font-family:var(--font-mono);}
+  .formactions{
+    display:flex;
+    gap:10px;
+    margin-top:1rem;
+    justify-content:flex-end;
+  }
+
+  .ledger{display:flex;flex-direction:column;gap:8px;}
+  .row{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-left:5px solid var(--blue);
+    border-radius:8px;
+    padding:12px 14px;
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:center;
+  }
+  .row.vencido{border-left-color:var(--orange);}
+  .row.porvencer{border-left-color:var(--amber);}
+  .row.pagado{border-left-color:var(--green);opacity:.8;}
+  .row-main{min-width:0;}
+  .row-top{
+    display:flex;
+    gap:10px;
+    align-items:baseline;
+    flex-wrap:wrap;
+  }
+  .cliente{font-weight:600;font-size:15px;}
+  .factura{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .producto{
+    font-size:13px;
+    color:var(--text-muted);
+    margin-top:2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .row-dates{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:4px;
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .nota{
+    font-family:var(--font-body);
+    font-size:12.5px;
+    font-style:italic;
+    color:var(--text-muted);
+    margin-top:5px;
+    padding-top:5px;
+    border-top:1px dashed var(--hairline);
+  }
+  .pagos-info{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--green-text);
+    background:var(--green-bg);
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:5px;
+    margin-top:5px;
+    font-weight:600;
+  }
+  .monto-sub{
+    font-family:var(--font-body);
+    font-size:11px;
+    color:var(--text-muted);
+    font-weight:500;
+  }
+  .row-side{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+  }
+  .monto{
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:16px;
+  }
+  .badge{
+    font-family:var(--font-body);
+    font-size:12px;
+    font-weight:600;
+    padding:3px 10px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .badge.vencido{background:var(--orange-bg);color:var(--orange-text);}
+  .badge.porvencer{background:var(--amber-bg);color:var(--amber-text);}
+  .badge.normal{background:var(--blue-bg);color:var(--blue-text);}
+  .badge.pagado{background:var(--green-bg);color:var(--green-text);}
+  .row-actions{display:flex;gap:6px;}
+  .iconbtn{
+    background:transparent;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    padding:5px 9px;
+    font-size:12px;
+    cursor:pointer;
+    color:var(--text-muted);
+    font-family:var(--font-body);
+  }
+  .iconbtn:hover{background:#EFF1F0;}
+  .iconbtn.danger:hover{background:var(--orange-bg);color:var(--orange-text);border-color:var(--orange);}
+
+  .empty{
+    text-align:center;
+    padding:3rem 1rem;
+    color:var(--text-muted);
+  }
+  .empty h3{
+    font-family:var(--font-display);
+    font-size:18px;
+    color:var(--text);
+    margin:0 0 .4rem;
+  }
+  .empty p{font-size:14px;margin:0 0 1rem;}
+  .loading{text-align:center;padding:3rem;color:var(--text-muted);font-size:14px;}
+  .footnote{
+    text-align:center;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:2rem;
+  }
+  .period-row{
+    display:flex;
+    gap:14px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-top:1.25rem;
+  }
+  .period-custom{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .period-custom input[type=date]{
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-body);
+    font-size:13px;
+    background:#fff;
+  }
+  .period-custom span{color:var(--text-muted);}
+  .period-label{
+    font-size:13px;
+    color:var(--text-muted);
+    margin:.6rem 0 0;
+  }
+  .objetivo-row{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:1rem;
+    padding-bottom:1rem;
+    border-bottom:1px dashed var(--hairline);
+  }
+  .objetivo-input-group{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;}
+  .objetivo-input-group label{
+    display:block;
+    font-size:12px;
+    color:var(--text-muted);
+    font-weight:500;
+    margin-bottom:4px;
+  }
+  .objetivo-input-group input{
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-mono);
+    font-size:14px;
+    width:140px;
+    background:#fff;
+  }
+  .metric-delta{
+    font-size:12px;
+    font-weight:600;
+    margin-top:2px;
+  }
+  .metric-delta.up{color:var(--green);}
+  .metric-delta.down{color:var(--orange);}
+  .metric-delta.flat{color:var(--text-muted);}
+  .chart-card,.client-card{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    padding:1.1rem 1.25rem;
+    margin-top:1.25rem;
+  }
+  .chart-title{
+    font-family:var(--font-display);
+    font-size:15px;
+    font-weight:600;
+    margin-bottom:.75rem;
+  }
+  .chart-legend{
+    display:flex;
+    gap:18px;
+    margin-top:.5rem;
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .legend-dot{
+    display:inline-block;
+    width:10px;height:10px;
+    border-radius:2px;
+    margin-right:5px;
+    vertical-align:-1px;
+  }
+  .client-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  .client-table th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--text-muted);
+    padding:6px 8px;
+    border-bottom:1px solid var(--hairline);
+    font-weight:600;
+  }
+  .client-table td{
+    padding:8px;
+    border-bottom:1px solid var(--hairline);
+    font-family:var(--font-mono);
+  }
+  .client-table td.nombre{font-family:var(--font-body);font-weight:500;}
+  .client-table td.debe{color:var(--orange);font-weight:700;}
+  .client-table tr:last-child td{border-bottom:none;}
+
+  .cal-nav{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:1.5rem;
+  }
+  .cal-title{
+    font-family:var(--font-display);
+    font-size:18px;
+    font-weight:600;
+    flex:1;
+    text-align:center;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+    margin-top:1rem;
+  }
+  .cal-daylabel{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--text-muted);
+    text-align:center;
+    padding-bottom:4px;
+    font-weight:600;
+  }
+  .cal-cell{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:8px;
+    min-height:92px;
+    padding:6px;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+  .cal-cell.otro-mes{opacity:.35;}
+  .cal-cell.hoy{border-color:var(--orange);border-width:2px;}
+  .cal-daynum{
+    font-family:var(--font-mono);
+    font-size:12px;
+    font-weight:700;
+    color:var(--text-muted);
+  }
+  .cal-cell.hoy .cal-daynum{color:var(--orange);}
+  .cal-evento{
+    font-size:10.5px;
+    padding:2px 5px;
+    border-radius:4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-weight:600;
+  }
+  .cal-evento.vencido{background:var(--orange-bg);color:var(--orange-text);}
+  .cal-evento.porvencer{background:var(--amber-bg);color:var(--amber-text);}
+  .cal-evento.normal{background:var(--blue-bg);color:var(--blue-text);}
+  .cal-evento.pagado{background:var(--green-bg);color:var(--green-text);text-decoration:line-through;}
+  .cal-evento.pago{background:var(--green-bg);color:var(--green-text);}
+  .cal-more{font-size:10.5px;color:var(--text-muted);padding-left:5px;}
+  .cal-legend{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-top:1rem;
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  @media (max-width:560px){
+    .cal-cell{min-height:64px;padding:4px;}
+    .cal-evento{font-size:9px;}
+    .cal-daylabel{font-size:9px;}
+  }
+
+  #printArea{display:none;}
+  .print-header{margin-bottom:18px;}
+  .print-header h1{font-family:var(--font-display);font-size:20px;margin:0 0 2px;}
+  .print-header p{font-family:var(--font-body);font-size:12px;color:var(--text-muted);margin:0;}
+  .print-table{width:100%;border-collapse:collapse;font-family:var(--font-body);font-size:12px;}
+  .print-table th{
+    text-align:left;
+    background:#EEE;
+    padding:6px 8px;
+    border:1px solid #ccc;
+    font-size:11px;
+    text-transform:uppercase;
+  }
+  .print-table td{padding:6px 8px;border:1px solid #ccc;}
+  .print-table td.vencida{color:#C7431E;font-weight:700;}
+  .print-total{margin-top:14px;font-family:var(--font-body);font-size:13px;font-weight:700;text-align:right;}
+
+  .deudor-card{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-left:5px solid var(--orange);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .deudor-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .deudor-titulo{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;}
+  .deudor-monto-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+  .deudor-detalle{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:6px;
+  }
+  .gestiones-list{
+    margin-top:10px;
+    border-top:1px dashed var(--hairline);
+    padding-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+  }
+  .gestion-item{
+    display:flex;
+    gap:9px;
+    align-items:baseline;
+    font-size:13px;
+  }
+  .gestion-fecha{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-muted);
+    white-space:nowrap;
+    font-weight:600;
+  }
+  .gestion-texto{flex:1;color:var(--text);}
+  .gestion-del{
+    background:transparent;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:12px;
+    padding:2px 4px;
+  }
+  .gestion-del:hover{color:var(--orange);}
+  .gestion-vacio{
+    font-size:12.5px;
+    color:var(--text-muted);
+    font-style:italic;
+    margin-top:8px;
+  }
+  .gestion-form{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .gestion-form input[type=date]{
+    padding:7px 8px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-size:12.5px;
+    font-family:var(--font-body);
+    background:#fff;
+  }
+  .gestion-form input[type=text]{
+    flex:1;
+    min-width:220px;
+    padding:7px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-size:13px;
+    font-family:var(--font-body);
+    background:#fff;
+  }
+
+  .cliente-card{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-left:5px solid var(--blue);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:12px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .cliente-card.inactivo{border-left-color:var(--hairline);opacity:.75;}
+  .cliente-info{min-width:220px;}
+  .cliente-nombre{font-weight:600;font-size:15px;}
+  .cliente-contacto{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:4px;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .cliente-notas{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-top:5px;}
+  .cliente-stats{
+    display:flex;
+    gap:18px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .cliente-stat{text-align:right;}
+  .cliente-stat .label{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
+  .cliente-stat .value{font-family:var(--font-mono);font-weight:700;font-size:14px;}
+  .cliente-stat .value.debe{color:var(--orange);}
+  .cliente-actions{display:flex;gap:6px;align-items:center;}
+  .wa-link{
+    display:inline-block;
+    background:var(--green-bg);
+    color:var(--green-text);
+    font-size:12px;
+    font-weight:600;
+    padding:6px 11px;
+    border-radius:6px;
+    text-decoration:none;
+  }
+  .wa-link:hover{opacity:.85;}
+
+  .producto-card{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-left:5px solid var(--blue);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:12px;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .producto-info{min-width:220px;}
+  .producto-nombre{font-weight:600;font-size:15px;}
+  .producto-detalle{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:4px;
+  }
+  .producto-notas{font-size:12.5px;color:var(--text-muted);font-style:italic;margin-top:5px;}
+  .producto-stats{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+
+  .toast-container{
+    position:fixed;
+    top:16px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:100;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
+  }
+  .toast{
+    background:var(--graphite);
+    color:#fff;
+    padding:11px 20px;
+    border-radius:8px;
+    font-family:var(--font-body);
+    font-size:13.5px;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+    max-width:90vw;
+    text-align:center;
+    animation:toast-in .15s ease-out;
+  }
+  .toast.error{background:var(--orange);}
+  @keyframes toast-in{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(10,14,16,.5);
+    z-index:200;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:#fff;
+    border-radius:10px;
+    padding:22px;
+    max-width:380px;
+    width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  .modal-box p{
+    font-family:var(--font-body);
+    font-size:14.5px;
+    color:var(--text);
+    margin:0 0 18px;
+    line-height:1.5;
+  }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+  }
+
+  @media print {
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{
+      display:block;
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      padding:20px;
+    }
+  }
+  @media (max-width:560px){
+    .formgrid{grid-template-columns:1fr;}
+    .row{grid-template-columns:1fr;}
+    .row-side{align-items:flex-start;flex-direction:row;justify-content:space-between;width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap header-inner" style="padding:0;">
+    <div>
+      <p class="eyebrow">Tacca Hnos. S.A.</p>
+      <h1>Control de facturación y cobranza</h1>
+    </div>
+    <div class="notif-dropdown">
+      <button class="notif-bell" id="btnNotifBell" title="Notificaciones">
+        🔔
+        <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
+      </button>
+      <div class="notif-menu" id="notifMenu">
+        <div class="notif-menu-header">Notificaciones</div>
+        <div id="notifList" class="notif-list"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs-row">
+    <div class="tabs" id="tabs">
+      <span class="tab active" data-tab="ventas">Ventas</span>
+      <span class="tab" data-tab="calendario">Calendario</span>
+      <span class="tab" data-tab="deudores">Bitácora de deudores</span>
+      <span class="tab" data-tab="clientes">Clientes</span>
+      <span class="tab" data-tab="productos">Productos</span>
+      <span class="tab tab-revision-btn" data-tab="revision">📊 Revisión</span>
+    </div>
+    <div class="datos-dropdown">
+      <button class="datos-btn" id="btnDatosMenu">💾 Datos guardados localmente ▾</button>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="btnExportar">Exportar backup (.json)</button>
+        <button id="btnImportar">Importar backup (.json)</button>
+        <input type="file" id="inputImportar" accept=".json" style="display:none;">
+      </div>
+    </div>
+  </div>
+
+  <div id="viewVentas">
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <button class="primary" id="btnNueva">+ Nueva venta</button>
+    <button class="primary green" id="btnNuevoPago">+ Agregar pago</button>
+    <input type="text" id="buscador" placeholder="Buscar por cliente, factura o producto...">
+    <div class="chip-group" id="filtros">
+      <span class="chip active" data-filter="todos">Todos</span>
+      <span class="chip" data-filter="pendiente">Pendientes</span>
+      <span class="chip" data-filter="vencido">Vencidos</span>
+      <span class="chip" data-filter="pagado">Pagados</span>
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:-4px;">
+    <span style="font-size:12.5px;color:var(--text-muted);">Fecha de venta:</span>
+    <input type="date" id="filtroDesde">
+    <span style="color:var(--text-muted);">–</span>
+    <input type="date" id="filtroHasta">
+    <button class="ghost" id="btnLimpiarFiltroFecha">Limpiar fechas</button>
+  </div>
+
+  <div class="formpanel" id="formPanel">
+    <h2 id="formTitulo">Cargar nueva venta</h2>
+    <div class="formgrid">
+      <div class="field">
+        <label>Fecha de venta</label>
+        <input type="date" id="f_fecha_venta">
+      </div>
+      <div class="field">
+        <label>Cliente</label>
+        <input type="text" id="f_cliente" list="listaClientes" placeholder="Razón social del cliente">
+        <datalist id="listaClientes"></datalist>
+      </div>
+      <div class="field">
+        <label>N° de factura</label>
+        <input type="text" id="f_factura" placeholder="0001-00001234">
+      </div>
+      <div class="field">
+        <label>Monto ($)</label>
+        <input type="number" id="f_monto" placeholder="0" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Producto</label>
+        <input type="text" id="f_producto" list="listaProductos" placeholder="Elegí o escribí un producto">
+        <datalist id="listaProductos"></datalist>
+      </div>
+      <div class="field">
+        <label>Cantidad (pares/unidades)</label>
+        <input type="number" id="f_cantidad" placeholder="Ej: 500" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>Condición de pago</label>
+        <select id="f_condicion">
+          <option value="Contado">Contado</option>
+          <option value="Cuenta corriente">Cuenta corriente</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Método de pago</label>
+        <select id="f_metodo">
+          <option value="Transferencia">Transferencia</option>
+          <option value="Efectivo">Efectivo</option>
+          <option value="Cheque">Cheque</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Fecha de vencimiento</label>
+        <input type="date" id="f_vencimiento">
+      </div>
+      <div class="field full">
+        <label>Notas (opcional)</label>
+        <input type="text" id="f_notas" placeholder="Aclaraciones, condiciones especiales, etc.">
+      </div>
+    </div>
+    <div class="formactions">
+      <button class="ghost" id="btnCancelar">Cancelar</button>
+      <button class="primary" id="btnGuardar">Guardar venta</button>
+    </div>
+  </div>
+
+  <div class="formpanel" id="pagoPanel">
+    <h2>Registrar pago</h2>
+    <div class="formgrid">
+      <div class="field full">
+        <label>Factura</label>
+        <select id="p_factura"></select>
+      </div>
+      <div class="field">
+        <label>Monto del pago ($)</label>
+        <input type="number" id="p_monto" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Fecha del pago</label>
+        <input type="date" id="p_fecha">
+      </div>
+      <div class="field full">
+        <label>Nota (opcional)</label>
+        <input type="text" id="p_nota" placeholder="Ej: seña, transferencia parcial...">
+      </div>
+    </div>
+    <div class="formactions">
+      <button class="ghost" id="btnCancelarPago">Cancelar</button>
+      <button class="primary green" id="btnGuardarPago">Registrar pago</button>
+    </div>
+  </div>
+
+  <div id="contenido">
+    <div class="loading">Cargando ventas...</div>
+  </div>
+  </div>
+
+  <div id="viewRevision" style="display:none;">
+    <div class="period-row">
+      <div class="chip-group" id="periodQuick">
+        <span class="chip" data-period="hoy">Hoy</span>
+        <span class="chip" data-period="quincena">Esta quincena</span>
+        <span class="chip active" data-period="mes">Este mes</span>
+      </div>
+      <div class="period-custom">
+        <input type="date" id="r_desde">
+        <span>–</span>
+        <input type="date" id="r_hasta">
+        <button class="ghost" id="btnAplicarRango">Aplicar rango</button>
+      </div>
+    </div>
+    <p class="period-label" id="periodLabel"></p>
+    <div class="toolbar" style="margin-top:.5rem;margin-bottom:0;">
+      <button class="primary" id="btnDescargarPDF">📄 Facturas a vencer (PDF)</button>
+      <button class="ghost" id="btnExportarRevisionPDF">📄 Exportar Revisión (PDF)</button>
+      <button class="ghost" id="btnExportarRevisionExcel">📊 Exportar a Excel (.csv)</button>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">📦 Gestión de ventas y pedidos — <span id="gestionMesLabel"></span></div>
+      <div class="objetivo-row">
+        <div class="objetivo-input-group">
+          <div>
+            <label>Objetivo mensual (ítems)</label>
+            <input type="number" id="objetivoMensualInput" min="0" step="1" placeholder="Ej: 90000">
+          </div>
+          <button class="ghost" id="btnGuardarObjetivo">Guardar objetivo</button>
+        </div>
+      </div>
+      <div class="stats" id="gestionStats"></div>
+    </div>
+
+    <div class="client-card">
+      <div class="chart-title">A quién venderle más</div>
+      <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Ordenado de mayor a menor volumen. Usa el promedio real (por compra) cuando ya tenés cantidades cargadas para ese cliente; si todavía no hay datos reales, usa el promedio estimado por mes que cargaste en su ficha.</p>
+      <table class="client-table">
+        <thead>
+          <tr><th>Cliente</th><th>Promedio</th><th>Detalle</th><th>Última compra</th></tr>
+        </thead>
+        <tbody id="ventaObjetivoRankingBody"></tbody>
+      </table>
+    </div>
+
+    <div class="stats" id="revStats"></div>
+
+    <div class="chart-card">
+      <div class="chart-title">Vendido y cobrado vs. período anterior</div>
+      <svg id="revChart" viewBox="0 0 560 220" style="width:100%;height:auto;"></svg>
+      <div class="chart-legend">
+        <span><span class="legend-dot" style="background:#2B6E7E;"></span>Período actual</span>
+        <span><span class="legend-dot" style="background:#B4B2A9;"></span>Período anterior</span>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <span>Evolución mensual</span>
+        <div class="chip-group" id="evolucionRango">
+          <span class="chip active" data-meses="6">6 meses</span>
+          <span class="chip" data-meses="12">12 meses</span>
+        </div>
+      </div>
+      <svg id="evolChart" viewBox="0 0 560 240" style="width:100%;height:auto;"></svg>
+      <div class="chart-legend">
+        <span><span class="legend-dot" style="background:#2B6E7E;"></span>Vendido</span>
+        <span><span class="legend-dot" style="background:#2F8557;"></span>Cobrado</span>
+      </div>
+    </div>
+
+    <div class="client-card">
+      <div class="chart-title">Por cliente (en el período)</div>
+      <table class="client-table">
+        <thead>
+          <tr><th>Cliente</th><th>Facturas (período)</th><th>Vendido (período)</th><th>Debe actualmente</th></tr>
+        </thead>
+        <tbody id="clientTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="viewCalendario" style="display:none;">
+    <div class="cal-nav">
+      <button class="ghost" id="calPrev">← Anterior</button>
+      <span class="cal-title" id="calTitle"></span>
+      <button class="ghost" id="calNext">Siguiente →</button>
+      <button class="ghost" id="calHoy">Hoy</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-legend">
+      <span><span class="legend-dot" style="background:#FCE7DE;border:1px solid #C7431E;"></span>⛔ Vencido</span>
+      <span><span class="legend-dot" style="background:#FBF0DA;border:1px solid #A8710A;"></span>⛔ Vence pronto (≤5 días)</span>
+      <span><span class="legend-dot" style="background:#E1EDEF;border:1px solid #2B6E7E;"></span>⛔ Vencimiento normal</span>
+      <span><span class="legend-dot" style="background:#E1F1E7;border:1px solid #2F8557;"></span>⛔ Pagado</span>
+      <span><span class="legend-dot" style="background:#E1F1E7;border:1px solid #2F8557;"></span>💰 Pago recibido</span>
+    </div>
+  </div>
+
+  <div id="viewDeudores" style="display:none;">
+    <div class="stats" id="deudoresStats"></div>
+    <div id="deudoresList" style="margin-top:1.25rem;"></div>
+  </div>
+
+  <div id="viewClientes" style="display:none;">
+    <div class="toolbar">
+      <button class="primary" id="btnNuevoCliente">+ Nuevo cliente</button>
+      <input type="text" id="buscadorClientes" placeholder="Buscar cliente...">
+    </div>
+
+    <div class="formpanel" id="clientePanel">
+      <h2 id="clienteFormTitulo">Nuevo cliente</h2>
+      <div class="formgrid">
+        <div class="field full">
+          <label>Nombre</label>
+          <input type="text" id="c_nombre" placeholder="Razón social del cliente">
+        </div>
+        <div class="field">
+          <label>Teléfono (WhatsApp)</label>
+          <input type="text" id="c_telefono" placeholder="Ej: 3491123456">
+        </div>
+        <div class="field">
+          <label>CUIT</label>
+          <input type="text" id="c_cuit" placeholder="20-12345678-9">
+        </div>
+        <div class="field full">
+          <label>Email</label>
+          <input type="text" id="c_email" placeholder="contacto@cliente.com">
+        </div>
+        <div class="field">
+          <label>Condición de pago habitual</label>
+          <select id="c_condicion_habitual">
+            <option value="">Sin definir</option>
+            <option value="Contado">Contado</option>
+            <option value="Cuenta corriente">Cuenta corriente</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Método de pago habitual</label>
+          <select id="c_metodo_habitual">
+            <option value="">Sin definir</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Promedio estimado (ítems/mes)</label>
+          <input type="number" id="c_estimado_mensual" min="0" step="1" placeholder="Ej: 350">
+        </div>
+        <div class="field full">
+          <label>Notas (opcional)</label>
+          <input type="text" id="c_notas" placeholder="Aclaraciones sobre el cliente">
+        </div>
+      </div>
+      <div class="formactions">
+        <button class="ghost" id="btnCancelarCliente">Cancelar</button>
+        <button class="primary" id="btnGuardarCliente">Guardar cliente</button>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Ranking de clientes (histórico)</div>
+      <table class="client-table">
+        <thead>
+          <tr><th>#</th><th>Cliente</th><th>Total histórico vendido</th><th>Facturas</th><th>Última compra</th><th>Debe actualmente</th></tr>
+        </thead>
+        <tbody id="rankingBody"></tbody>
+      </table>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">⚠️ Clientes que más tardan en pagar</div>
+      <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Según el atraso promedio entre la fecha de vencimiento y la fecha en que efectivamente pagaron, más las facturas vencidas que tienen hoy sin cobrar.</p>
+      <table class="client-table">
+        <thead>
+          <tr><th>Cliente</th><th>Atraso promedio</th><th>Facturas pagadas con atraso</th><th>Vencidas ahora</th><th>Debe actualmente</th></tr>
+        </thead>
+        <tbody id="morososBody"></tbody>
+      </table>
+    </div>
+
+    <div id="clientesList" style="margin-top:1.25rem;"></div>
+  </div>
+
+  <div id="viewProductos" style="display:none;">
+    <div class="toolbar">
+      <button class="primary" id="btnNuevoProducto">+ Nuevo producto</button>
+      <input type="text" id="buscadorProductos" placeholder="Buscar producto...">
+    </div>
+
+    <div class="formpanel" id="productoPanel">
+      <h2 id="productoFormTitulo">Nuevo producto</h2>
+      <div class="formgrid">
+        <div class="field full">
+          <label>Nombre del producto</label>
+          <input type="text" id="pr_nombre" placeholder="Ej: Puntera de acero N°40">
+        </div>
+        <div class="field">
+          <label>Unidad de medida</label>
+          <select id="pr_unidad">
+            <option value="pares">pares</option>
+            <option value="unidades">unidades</option>
+            <option value="kg">kg</option>
+            <option value="otro">otro</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Notas (opcional)</label>
+          <input type="text" id="pr_notas" placeholder="Aclaraciones sobre el producto">
+        </div>
+      </div>
+      <div class="formactions">
+        <button class="ghost" id="btnCancelarProducto">Cancelar</button>
+        <button class="primary" id="btnGuardarProducto">Guardar producto</button>
+      </div>
+    </div>
+
+    <div id="productosList" style="margin-top:1.25rem;"></div>
+  </div>
+
+  <p class="footnote">Los datos se guardan automáticamente en esta app. Recomendamos exportar un backup (.json) cada tanto como respaldo propio.</p>
+</div>
+
+<script>
+let ventas = [];
+let clientes = [];
+let editandoClienteId = null;
+let productos = [];
+let editandoProductoId = null;
+
+function mostrarAviso(mensaje, tipo, guardar) {
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (tipo === 'error' ? ' error' : '');
+  toast.textContent = mensaje;
+  $('toastContainer').appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 3800);
+  if (guardar) guardarNotificacion(mensaje, tipo);
+}
+
+function confirmarAccion(mensaje) {
+  return new Promise((resolve) => {
+    $('modalMensaje').textContent = mensaje;
+    $('modalOverlay').classList.add('open');
+    function limpiar() {
+      $('modalOverlay').classList.remove('open');
+      $('modalCancelar').removeEventListener('click', onCancel);
+      $('modalConfirmar').removeEventListener('click', onConfirm);
+    }
+    function onCancel() { limpiar(); resolve(false); }
+    function onConfirm() { limpiar(); resolve(true); }
+    $('modalCancelar').addEventListener('click', onCancel);
+    $('modalConfirmar').addEventListener('click', onConfirm);
+  });
+}
+
+let notificaciones = [];
+
+async function cargarNotificaciones() {
+  try {
+    const result = await window.storage.get('notificaciones', false);
+    notificaciones = result ? JSON.parse(result.value) : [];
+  } catch (e) {
+    notificaciones = [];
+  }
+  renderNotifBell();
+}
+
+async function guardarNotificacionesEnStorage() {
+  try {
+    await window.storage.set('notificaciones', JSON.stringify(notificaciones), false);
+  } catch (e) { /* noop */ }
+}
+
+function truncarTexto(texto, maxLen) {
+  if (texto.length <= maxLen) return texto;
+  return texto.slice(0, maxLen - 1).trim() + '…';
+}
+
+function formatFechaHora(iso) {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm} ${hh}:${min}`;
+}
+
+async function guardarNotificacion(mensaje, tipo) {
+  notificaciones.unshift({
+    id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    mensaje,
+    tipo: tipo === 'error' ? 'error' : 'info',
+    fecha: new Date().toISOString()
+  });
+  if (notificaciones.length > 50) notificaciones = notificaciones.slice(0, 50);
+  await guardarNotificacionesEnStorage();
+  renderNotifBell();
+}
+
+function renderNotifBell() {
+  const badge = $('notifBadge');
+  if (notificaciones.length > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = notificaciones.length > 9 ? '9+' : notificaciones.length;
+  } else {
+    badge.style.display = 'none';
+  }
+  renderNotifList();
+}
+
+function renderNotifList() {
+  if (notificaciones.length === 0) {
+    $('notifList').innerHTML = `<div class="notif-empty">No hay notificaciones guardadas.</div>`;
+    return;
+  }
+  $('notifList').innerHTML = notificaciones.map(n => `
+    <div class="notif-item" onclick="reabrirNotificacion('${n.id}', event)">
+      <div class="notif-item-text">
+        <div class="notif-item-msg">${escapeHtml(truncarTexto(n.mensaje, 46))}</div>
+        <div class="notif-item-fecha">${formatFechaHora(n.fecha)}</div>
+      </div>
+      <button class="notif-item-del" onclick="eliminarNotificacion('${n.id}', event)" title="Eliminar">✕</button>
+    </div>`).join('');
+}
+
+function reabrirNotificacion(id, event) {
+  if (event) event.stopPropagation();
+  const n = notificaciones.find(x => x.id === id);
+  if (!n) return;
+  mostrarAviso(n.mensaje, n.tipo === 'error' ? 'error' : undefined);
+  $('notifMenu').classList.remove('open');
+}
+
+async function eliminarNotificacion(id, event) {
+  if (event) event.stopPropagation();
+  notificaciones = notificaciones.filter(x => x.id !== id);
+  await guardarNotificacionesEnStorage();
+  renderNotifBell();
+}
+
+let filtroActivo = 'todos';
+let busqueda = '';
+let filtroFechaDesde = '';
+let filtroFechaHasta = '';
+let editandoId = null;
+
+const $ = (id) => document.getElementById(id);
+
+$('btnNotifBell').addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('notifMenu').classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  if (!$('notifMenu').contains(e.target) && e.target !== $('btnNotifBell')) {
+    $('notifMenu').classList.remove('open');
+  }
+});
+
+function hoy() {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function parseFecha(str) {
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function toISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatFechaObj(d) {
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function formatFecha(str) {
+  if (!str) return '';
+  return formatFechaObj(parseFecha(str));
+}
+
+function formatMonto(n) {
+  return new Intl.NumberFormat('es-AR', {style:'currency', currency:'ARS', maximumFractionDigits:0}).format(n);
+}
+
+function diasHasta(str) {
+  const venc = parseFecha(str);
+  const diff = Math.round((venc - hoy()) / 86400000);
+  return diff;
+}
+
+function montoPagado(v) {
+  return (v.pagos || []).reduce((s,p) => s + Number(p.monto), 0);
+}
+
+function saldoPendiente(v) {
+  if (v.estado === 'pagado') return 0;
+  const saldo = Number(v.monto) - montoPagado(v);
+  return saldo > 0 ? saldo : 0;
+}
+
+async function cargarVentas() {
+  try {
+    const result = await window.storage.get('ventas', false);
+    ventas = result ? JSON.parse(result.value) : [];
+  } catch (e) {
+    ventas = [];
+  }
+  ventas.forEach(v => { if (!v.pagos) v.pagos = []; if (!v.gestiones) v.gestiones = []; });
+  render();
+  avisarVencimientosHoy();
+  avisarClientesMorososCercanos();
+}
+
+function avisarVencimientosHoy() {
+  const hoyStr = toISODate(new Date());
+  const vencenHoy = ventas.filter(v => v.estado !== 'pagado' && v.fecha_vencimiento === hoyStr);
+  if (vencenHoy.length === 0) return;
+  const total = vencenHoy.reduce((s,v) => s + saldoPendiente(v), 0);
+  mostrarAviso(`📅 Hoy vencen ${vencenHoy.length} factura${vencenHoy.length===1?'':'s'} por ${formatMonto(total)}`, null, true);
+}
+
+function avisarClientesMorososCercanos() {
+  const UMBRAL_DIAS = 3;
+  const mapMorosidad = calcularMorosidad();
+  const proximas = ventas.filter(v => {
+    if (v.estado === 'pagado') return false;
+    const d = diasHasta(v.fecha_vencimiento);
+    if (d < 0 || d > UMBRAL_DIAS) return false;
+    return esClienteMoroso(v.cliente, mapMorosidad);
+  });
+  if (proximas.length === 0) return;
+
+  if (proximas.length <= 3) {
+    proximas.forEach(v => {
+      const d = diasHasta(v.fecha_vencimiento);
+      const cuando = d === 0 ? 'hoy' : `en ${d} día${d===1?'':'s'}`;
+      mostrarAviso(`⚠️ ${v.cliente} (suele pagar tarde) tiene una factura de ${formatMonto(saldoPendiente(v))} que vence ${cuando}.`, 'error', true);
+    });
+  } else {
+    const total = proximas.reduce((s,v) => s + saldoPendiente(v), 0);
+    mostrarAviso(`⚠️ ${proximas.length} facturas de clientes que suelen pagar tarde vencen en los próximos ${UMBRAL_DIAS} días (total ${formatMonto(total)}).`, 'error', true);
+  }
+}
+
+async function guardarEnStorage() {
+  try {
+    await window.storage.set('ventas', JSON.stringify(ventas), false);
+  } catch (e) {
+    mostrarAviso('No se pudo guardar. Probá de nuevo.', 'error');
+  }
+}
+
+function estadoDe(venta) {
+  if (venta.estado === 'pagado') return 'pagado';
+  const dias = diasHasta(venta.fecha_vencimiento);
+  if (dias < 0) return 'vencido';
+  if (dias <= 5) return 'porvencer';
+  return 'normal';
+}
+
+function badgeTexto(venta) {
+  if (venta.estado === 'pagado') {
+    return 'Pagada' + (venta.fecha_pago ? ' el ' + formatFecha(venta.fecha_pago) : '');
+  }
+  const dias = diasHasta(venta.fecha_vencimiento);
+  if (dias < 0) return `Vencida hace ${Math.abs(dias)} día${Math.abs(dias)===1?'':'s'}`;
+  if (dias === 0) return 'Vence hoy';
+  return `Vence en ${dias} día${dias===1?'':'s'}`;
+}
+
+function calcularStats() {
+  const pendientes = ventas.filter(v => v.estado !== 'pagado');
+  const totalPendiente = pendientes.reduce((s,v) => s + saldoPendiente(v), 0);
+  const vencidos = pendientes.filter(v => diasHasta(v.fecha_vencimiento) < 0);
+  const totalVencido = vencidos.reduce((s,v) => s + saldoPendiente(v), 0);
+  const porVencer = pendientes.filter(v => {
+    const d = diasHasta(v.fecha_vencimiento);
+    return d >= 0 && d <= 7;
+  });
+  return {pendientes, totalPendiente, vencidos, totalVencido, porVencer};
+}
+
+function renderStats() {
+  const s = calcularStats();
+  $('stats').innerHTML = `
+    <div class="stat">
+      <div class="label">Pendiente de cobro</div>
+      <div class="value">${formatMonto(s.totalPendiente)}</div>
+      <div class="sub">${s.pendientes.length} factura${s.pendientes.length===1?'':'s'}</div>
+    </div>
+    <div class="stat orange">
+      <div class="label">Vencido</div>
+      <div class="value">${formatMonto(s.totalVencido)}</div>
+      <div class="sub">${s.vencidos.length} factura${s.vencidos.length===1?'':'s'}</div>
+    </div>
+    <div class="stat amber">
+      <div class="label">Vence en 7 días</div>
+      <div class="value">${s.porVencer.length}</div>
+      <div class="sub">factura${s.porVencer.length===1?'':'s'} por vencer</div>
+    </div>
+  `;
+}
+
+function ventasFiltradas() {
+  let lista = ventas.filter(v => {
+    if (filtroActivo === 'todos') return true;
+    if (filtroActivo === 'pendiente') return v.estado !== 'pagado';
+    if (filtroActivo === 'pagado') return v.estado === 'pagado';
+    if (filtroActivo === 'vencido') return v.estado !== 'pagado' && diasHasta(v.fecha_vencimiento) < 0;
+    return true;
+  });
+  if (busqueda.trim()) {
+    const q = busqueda.trim().toLowerCase();
+    lista = lista.filter(v =>
+      v.cliente.toLowerCase().includes(q) ||
+      v.factura.toLowerCase().includes(q) ||
+      (v.producto || '').toLowerCase().includes(q)
+    );
+  }
+  if (filtroFechaDesde) {
+    const desde = parseFecha(filtroFechaDesde);
+    lista = lista.filter(v => parseFecha(v.fecha_venta) >= desde);
+  }
+  if (filtroFechaHasta) {
+    const hasta = parseFecha(filtroFechaHasta);
+    lista = lista.filter(v => parseFecha(v.fecha_venta) <= hasta);
+  }
+  lista.sort((a,b) => {
+    const aVal = a.estado === 'pagado' ? Infinity : diasHasta(a.fecha_vencimiento);
+    const bVal = b.estado === 'pagado' ? Infinity : diasHasta(b.fecha_vencimiento);
+    return aVal - bVal;
+  });
+  return lista;
+}
+
+function renderLedger() {
+  const lista = ventasFiltradas();
+  const contenido = $('contenido');
+  if (ventas.length === 0) {
+    contenido.innerHTML = `
+      <div class="empty">
+        <h3>Todavía no cargaste ninguna venta</h3>
+        <p>Registrá tu primera factura para empezar a controlar los vencimientos.</p>
+        <button class="primary" onclick="abrirFormulario()">+ Nueva venta</button>
+      </div>`;
+    return;
+  }
+  if (lista.length === 0) {
+    contenido.innerHTML = `<div class="empty"><h3>No hay resultados</h3><p>Probá con otro filtro o búsqueda.</p></div>`;
+    return;
+  }
+  contenido.innerHTML = `<div class="ledger">${lista.map(v => filaHTML(v)).join('')}</div>`;
+}
+
+function filaHTML(v) {
+  const estado = estadoDe(v);
+  const badgeClass = estado === 'normal' ? 'normal' : estado;
+  const pagado = montoPagado(v);
+  const saldo = saldoPendiente(v);
+  const noPagada = v.estado !== 'pagado';
+  return `
+    <div class="row ${estado}">
+      <div class="row-main">
+        <div class="row-top">
+          <span class="cliente">${escapeHtml(v.cliente)}</span>
+          <span class="factura">${escapeHtml(v.factura)}</span>
+        </div>
+        <div class="producto">${escapeHtml(v.producto || '—')}${v.cantidad != null ? ` <span style="color:var(--text-muted);">(${v.cantidad})</span>` : ''}</div>
+        <div class="row-dates">
+          <span>Venta: ${formatFecha(v.fecha_venta)}</span>
+          <span>Vence: ${formatFecha(v.fecha_vencimiento)}</span>
+          <span>${escapeHtml(v.condicion)} · ${escapeHtml(v.metodo)}</span>
+        </div>
+        ${v.notas ? `<div class="nota">📝 ${escapeHtml(v.notas)}</div>` : ''}
+        ${noPagada && pagado > 0 ? `<div class="pagos-info">💰 Cobrado ${formatMonto(pagado)} de ${formatMonto(v.monto)} — saldo ${formatMonto(saldo)}</div>` : ''}
+      </div>
+      <div class="row-side">
+        <span class="monto">${formatMonto(noPagada ? saldo : v.monto)}</span>
+        ${noPagada && pagado > 0 ? `<span class="monto-sub">saldo de ${formatMonto(v.monto)}</span>` : ''}
+        <span class="badge ${badgeClass}">${badgeTexto(v)}</span>
+        <div class="row-actions">
+          ${noPagada ? `<button class="iconbtn" onclick="abrirFormularioPago('${v.id}')">+ Pago</button>` : ''}
+          ${noPagada ? `<button class="iconbtn" onclick="marcarPagado('${v.id}')">Marcar pagada</button>` : ''}
+          <button class="iconbtn" onclick="editarVenta('${v.id}')">Editar</button>
+          <button class="iconbtn danger" onclick="eliminarVenta('${v.id}')">Eliminar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function render() {
+  renderStats();
+  renderLedger();
+}
+
+function aplicarModalidadPagoCliente() {
+  const nombre = $('f_cliente').value.trim();
+  if (!nombre) return;
+  const cliente = clientes.find(c => c.nombre.trim().toLowerCase() === nombre.toLowerCase());
+  if (!cliente) return;
+  if (cliente.condicion_habitual) $('f_condicion').value = cliente.condicion_habitual;
+  if (cliente.metodo_habitual) $('f_metodo').value = cliente.metodo_habitual;
+}
+
+function abrirFormulario() {
+  editandoId = null;
+  cerrarFormularioPago();
+  $('formTitulo').textContent = 'Cargar nueva venta';
+  $('f_fecha_venta').value = toISODate(new Date());
+  $('f_cliente').value = '';
+  $('f_factura').value = '';
+  $('f_monto').value = '';
+  $('f_producto').value = '';
+  $('f_cantidad').value = '';
+  $('f_condicion').value = 'Contado';
+  $('f_metodo').value = 'Transferencia';
+  $('f_vencimiento').value = '';
+  $('f_notas').value = '';
+  $('formPanel').classList.add('open');
+}
+
+function cerrarFormulario() {
+  $('formPanel').classList.remove('open');
+  editandoId = null;
+}
+
+function editarVenta(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+  cerrarFormularioPago();
+  editandoId = id;
+  $('formTitulo').textContent = 'Editar venta';
+  $('f_fecha_venta').value = v.fecha_venta;
+  $('f_cliente').value = v.cliente;
+  $('f_factura').value = v.factura;
+  $('f_monto').value = v.monto;
+  $('f_producto').value = v.producto;
+  $('f_cantidad').value = v.cantidad != null ? v.cantidad : '';
+  $('f_condicion').value = v.condicion;
+  $('f_metodo').value = v.metodo;
+  $('f_vencimiento').value = v.fecha_vencimiento;
+  $('f_notas').value = v.notas || '';
+  $('formPanel').classList.add('open');
+  $('formPanel').scrollIntoView({behavior:'smooth'});
+}
+
+async function guardarVenta() {
+  const cliente = $('f_cliente').value.trim();
+  const factura = $('f_factura').value.trim();
+  const monto = parseFloat($('f_monto').value);
+  const fecha_venta = $('f_fecha_venta').value;
+  const fecha_vencimiento = $('f_vencimiento').value;
+  const cantidadRaw = $('f_cantidad').value;
+  const cantidad = cantidadRaw === '' ? null : parseFloat(cantidadRaw);
+
+  if (!cliente || !factura || !fecha_venta || !fecha_vencimiento || isNaN(monto)) {
+    mostrarAviso('Completá cliente, factura, monto, fecha de venta y vencimiento.', 'error');
+    return;
+  }
+
+  if (editandoId) {
+    const v = ventas.find(x => x.id === editandoId);
+    Object.assign(v, {
+      cliente, factura, monto, fecha_venta, fecha_vencimiento,
+      producto: $('f_producto').value.trim(),
+      cantidad,
+      condicion: $('f_condicion').value,
+      metodo: $('f_metodo').value,
+      notas: $('f_notas').value.trim()
+    });
+  } else {
+    ventas.push({
+      id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      cliente, factura, monto, fecha_venta, fecha_vencimiento,
+      producto: $('f_producto').value.trim(),
+      cantidad,
+      condicion: $('f_condicion').value,
+      metodo: $('f_metodo').value,
+      notas: $('f_notas').value.trim(),
+      estado: 'pendiente',
+      fecha_pago: null,
+      pagos: [],
+      gestiones: []
+    });
+  }
+
+  await guardarEnStorage();
+  actualizarDatalistProductos();
+  cerrarFormulario();
+  refreshTodasLasVistas();
+}
+
+async function marcarPagado(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+  const saldo = saldoPendiente(v);
+  if (saldo <= 0) return;
+  if (!v.pagos) v.pagos = [];
+  v.pagos.push({monto: saldo, fecha: toISODate(new Date()), nota: 'Pago total'});
+  v.estado = 'pagado';
+  v.fecha_pago = toISODate(new Date());
+  await guardarEnStorage();
+  refreshTodasLasVistas();
+}
+
+async function eliminarVenta(id) {
+  const ok = await confirmarAccion('¿Eliminar esta venta? No se puede deshacer.');
+  if (!ok) return;
+  ventas = ventas.filter(x => x.id !== id);
+  await guardarEnStorage();
+  refreshTodasLasVistas();
+}
+
+function refreshTodasLasVistas() {
+  render();
+  actualizarDatalistClientes();
+  actualizarDatalistProductos();
+  if ($('viewRevision').style.display !== 'none') renderRevision();
+  if ($('viewCalendario').style.display !== 'none') renderCalendario();
+  if ($('viewDeudores').style.display !== 'none') renderDeudores();
+  if ($('viewClientes').style.display !== 'none') renderClientes();
+  if ($('viewProductos').style.display !== 'none') renderProductos();
+}
+
+function abrirFormularioPago(preseleccionarId) {
+  cerrarFormulario();
+  const pendientes = ventas
+    .filter(v => v.estado !== 'pagado')
+    .slice()
+    .sort((a,b) => parseFecha(a.fecha_vencimiento) - parseFecha(b.fecha_vencimiento));
+
+  if (pendientes.length === 0) {
+    mostrarAviso('No hay facturas pendientes de cobro para registrar un pago.', 'error');
+    return;
+  }
+
+  $('p_factura').innerHTML = pendientes.map(v => `
+    <option value="${v.id}">${escapeHtml(v.cliente)} — Fact. ${escapeHtml(v.factura)} — saldo ${formatMonto(saldoPendiente(v))}</option>
+  `).join('');
+
+  if (preseleccionarId) $('p_factura').value = preseleccionarId;
+  $('p_fecha').value = toISODate(new Date());
+  $('p_nota').value = '';
+  actualizarMontoSugerido();
+  $('pagoPanel').classList.add('open');
+  $('pagoPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function actualizarMontoSugerido() {
+  const v = ventas.find(x => x.id === $('p_factura').value);
+  if (v) $('p_monto').value = saldoPendiente(v).toFixed(2);
+}
+
+function cerrarFormularioPago() {
+  $('pagoPanel').classList.remove('open');
+}
+
+async function guardarPago() {
+  const v = ventas.find(x => x.id === $('p_factura').value);
+  if (!v) {
+    mostrarAviso('Elegí una factura.', 'error');
+    return;
+  }
+  const monto = parseFloat($('p_monto').value);
+  const fecha = $('p_fecha').value;
+  if (isNaN(monto) || monto <= 0 || !fecha) {
+    mostrarAviso('Completá un monto válido y la fecha del pago.', 'error');
+    return;
+  }
+  const saldo = saldoPendiente(v);
+  if (monto > saldo + 0.01) {
+    const ok = await confirmarAccion(`El pago ingresado (${formatMonto(monto)}) es mayor al saldo pendiente (${formatMonto(saldo)}). ¿Registrar igual?`);
+    if (!ok) return;
+  }
+
+  if (!v.pagos) v.pagos = [];
+  v.pagos.push({monto, fecha, nota: $('p_nota').value.trim()});
+
+  const pagadoTotal = montoPagado(v);
+  if (pagadoTotal >= Number(v.monto) - 0.01) {
+    v.estado = 'pagado';
+    v.fecha_pago = fecha;
+  } else {
+    v.estado = 'parcial';
+  }
+
+  await guardarEnStorage();
+  cerrarFormularioPago();
+  refreshTodasLasVistas();
+}
+
+$('btnNueva').addEventListener('click', abrirFormulario);
+$('btnNuevoPago').addEventListener('click', () => abrirFormularioPago());
+$('btnCancelarPago').addEventListener('click', cerrarFormularioPago);
+$('btnGuardarPago').addEventListener('click', guardarPago);
+$('p_factura').addEventListener('change', actualizarMontoSugerido);
+$('f_cliente').addEventListener('input', aplicarModalidadPagoCliente);
+$('btnCancelar').addEventListener('click', cerrarFormulario);
+$('btnGuardar').addEventListener('click', guardarVenta);
+$('buscador').addEventListener('input', (e) => { busqueda = e.target.value; renderLedger(); });
+$('filtroDesde').addEventListener('change', (e) => { filtroFechaDesde = e.target.value; renderLedger(); });
+$('filtroHasta').addEventListener('change', (e) => { filtroFechaHasta = e.target.value; renderLedger(); });
+$('btnLimpiarFiltroFecha').addEventListener('click', () => {
+  filtroFechaDesde = '';
+  filtroFechaHasta = '';
+  $('filtroDesde').value = '';
+  $('filtroHasta').value = '';
+  renderLedger();
+});
+$('filtros').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#filtros .chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  filtroActivo = e.target.dataset.filter;
+  renderLedger();
+});
+
+let periodMode = 'mes';
+let rangoActual = null;
+let evolucionMeses = 6;
+
+function calcularRangoRapido(mode) {
+  const t = hoy();
+  const year = t.getFullYear(), month = t.getMonth(), day = t.getDate();
+  if (mode === 'hoy') return {desde: t, hasta: t};
+  if (mode === 'quincena') {
+    if (day <= 15) return {desde: new Date(year,month,1), hasta: new Date(year,month,15)};
+    return {desde: new Date(year,month,16), hasta: new Date(year,month+1,0)};
+  }
+  return {desde: new Date(year,month,1), hasta: new Date(year,month+1,0)};
+}
+
+function rangoAnterior(desde, hasta) {
+  const lenDays = Math.round((hasta - desde) / 86400000) + 1;
+  const prevHasta = new Date(desde);
+  prevHasta.setDate(prevHasta.getDate() - 1);
+  const prevDesde = new Date(prevHasta);
+  prevDesde.setDate(prevDesde.getDate() - (lenDays - 1));
+  return {desde: prevDesde, hasta: prevHasta};
+}
+
+function enRango(fechaStr, desde, hasta) {
+  const d = parseFecha(fechaStr);
+  return d >= desde && d <= hasta;
+}
+
+function metricasPeriodo(desde, hasta) {
+  const vendidas = ventas.filter(v => enRango(v.fecha_venta, desde, hasta));
+  const vendido = vendidas.reduce((s,v) => s + Number(v.monto), 0);
+  let cobrado = 0;
+  ventas.forEach(v => {
+    (v.pagos || []).forEach(p => {
+      if (enRango(p.fecha, desde, hasta)) cobrado += Number(p.monto);
+    });
+  });
+  return {vendido, cobrado, cantidadVendidas: vendidas.length};
+}
+
+function deltaHTML(actual, previo) {
+  if (previo === 0) {
+    if (actual === 0) return `<div class="metric-delta flat">Sin cambios</div>`;
+    return `<div class="metric-delta up">Nuevo vs. período anterior</div>`;
+  }
+  const pct = Math.round(((actual - previo) / previo) * 100);
+  if (pct === 0) return `<div class="metric-delta flat">Igual que el período anterior</div>`;
+  const cls = pct > 0 ? 'up' : 'down';
+  const signo = pct > 0 ? '+' : '';
+  return `<div class="metric-delta ${cls}">${signo}${pct}% vs. período anterior</div>`;
+}
+
+function formatRangoLabel(desde, hasta) {
+  const f = (d) => formatFechaObj(d);
+  if (toISODate(desde) === toISODate(hasta)) return `Mostrando: ${f(desde)}`;
+  return `Mostrando: ${f(desde)} al ${f(hasta)}`;
+}
+
+function renderRevision() {
+  let desde, hasta;
+  if (rangoActual) {
+    desde = rangoActual.desde; hasta = rangoActual.hasta;
+  } else {
+    const r = calcularRangoRapido(periodMode);
+    desde = r.desde; hasta = r.hasta;
+  }
+  $('periodLabel').textContent = formatRangoLabel(desde, hasta);
+  $('r_desde').value = toISODate(desde);
+  $('r_hasta').value = toISODate(hasta);
+
+  const actual = metricasPeriodo(desde, hasta);
+  const prevRango = rangoAnterior(desde, hasta);
+  const previo = metricasPeriodo(prevRango.desde, prevRango.hasta);
+  const pendienteActual = ventas.filter(v => v.estado !== 'pagado').reduce((s,v) => s + saldoPendiente(v), 0);
+
+  $('revStats').innerHTML = `
+    <div class="stat">
+      <div class="label">Vendido en el período</div>
+      <div class="value">${formatMonto(actual.vendido)}</div>
+      ${deltaHTML(actual.vendido, previo.vendido)}
+    </div>
+    <div class="stat">
+      <div class="label">Cobrado en el período</div>
+      <div class="value">${formatMonto(actual.cobrado)}</div>
+      ${deltaHTML(actual.cobrado, previo.cobrado)}
+    </div>
+    <div class="stat">
+      <div class="label">Pendiente actual (a hoy)</div>
+      <div class="value">${formatMonto(pendienteActual)}</div>
+      <div class="sub">Total sin cobrar, sin importar el período</div>
+    </div>
+  `;
+
+  renderChart(actual, previo);
+  renderEvolucion(evolucionMeses);
+  renderClientTable(desde, hasta);
+  renderGestionVentas();
+  renderVentaObjetivoRanking();
+}
+
+function renderChart(actual, previo) {
+  const valores = [actual.vendido, previo.vendido, actual.cobrado, previo.cobrado];
+  const max = Math.max(...valores, 1);
+  const chartW = 560, chartH = 220, baseY = 180, barW = 55, gapDentro = 14, gapGrupo = 70;
+  const groupX = [140, 340];
+  const escala = (v) => (v / max) * 140;
+
+  function barra(x, valor, color) {
+    const h = escala(valor);
+    const y = baseY - h;
+    const label = valor >= 1000 ? new Intl.NumberFormat('es-AR',{notation:'compact',maximumFractionDigits:1}).format(valor) : Math.round(valor);
+    return `
+      <rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="3" fill="${color}"></rect>
+      <text x="${x + barW/2}" y="${y - 8}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" fill="${color}">${label}</text>
+    `;
+  }
+
+  let svg = `<line x1="60" y1="${baseY}" x2="500" y2="${baseY}" stroke="#D3D8D7" stroke-width="1"/>`;
+  svg += barra(groupX[0] - gapDentro/2 - barW, actual.vendido, '#2B6E7E');
+  svg += barra(groupX[0] + gapDentro/2, previo.vendido, '#B4B2A9');
+  svg += barra(groupX[1] - gapDentro/2 - barW, actual.cobrado, '#2B6E7E');
+  svg += barra(groupX[1] + gapDentro/2, previo.cobrado, '#B4B2A9');
+  svg += `<text x="${groupX[0]}" y="${baseY + 22}" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#1B2023">Vendido</text>`;
+  svg += `<text x="${groupX[1]}" y="${baseY + 22}" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#1B2023">Cobrado</text>`;
+
+  $('revChart').innerHTML = svg;
+}
+
+function calcularEvolucionMensual(nMeses) {
+  const hoyD = hoy();
+  const meses = [];
+  for (let i = nMeses - 1; i >= 0; i--) {
+    const d = new Date(hoyD.getFullYear(), hoyD.getMonth() - i, 1);
+    const desde = new Date(d.getFullYear(), d.getMonth(), 1);
+    const hasta = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    const m = metricasPeriodo(desde, hasta);
+    const nombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    meses.push({
+      label: `${nombres[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`,
+      vendido: m.vendido,
+      cobrado: m.cobrado
+    });
+  }
+  return meses;
+}
+
+function renderEvolucion(nMeses) {
+  const datos = calcularEvolucionMensual(nMeses);
+  const max = Math.max(...datos.map(d => d.vendido), ...datos.map(d => d.cobrado), 1);
+  const chartW = 560, leftPad = 55, rightPad = 15, topPad = 20, baseY = 190;
+  const usableW = chartW - leftPad - rightPad;
+  const stepX = datos.length > 1 ? usableW / (datos.length - 1) : 0;
+  const escalaY = (v) => topPad + (140 - (v / max) * 140);
+
+  const puntos = (campo) => datos.map((d, i) => `${leftPad + i*stepX},${escalaY(d[campo])}`).join(' ');
+
+  let svg = `<line x1="${leftPad}" y1="${baseY}" x2="${chartW-rightPad}" y2="${baseY}" stroke="#D3D8D7" stroke-width="1"/>`;
+  svg += `<polyline points="${puntos('vendido')}" fill="none" stroke="#2B6E7E" stroke-width="2.5"/>`;
+  svg += `<polyline points="${puntos('cobrado')}" fill="none" stroke="#2F8557" stroke-width="2.5"/>`;
+
+  datos.forEach((d, i) => {
+    const x = leftPad + i*stepX;
+    const titulo = `${d.label} · Vendido ${formatMonto(d.vendido)} · Cobrado ${formatMonto(d.cobrado)}`;
+    svg += `<circle cx="${x}" cy="${escalaY(d.vendido)}" r="3.5" fill="#2B6E7E"><title>${escapeHtml(titulo)}</title></circle>`;
+    svg += `<circle cx="${x}" cy="${escalaY(d.cobrado)}" r="3.5" fill="#2F8557"><title>${escapeHtml(titulo)}</title></circle>`;
+    const labelStep = nMeses > 8 ? 2 : 1;
+    if (i % labelStep === 0) {
+      svg += `<text x="${x}" y="${baseY + 18}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#5C6B6E">${d.label}</text>`;
+    }
+  });
+
+  $('evolChart').innerHTML = svg;
+}
+
+function renderClientTable(desde, hasta) {
+  const clientes = {};
+  ventas.forEach(v => {
+    if (!clientes[v.cliente]) clientes[v.cliente] = {facturasPeriodo: 0, vendidoPeriodo: 0, debeActual: 0};
+    if (enRango(v.fecha_venta, desde, hasta)) {
+      clientes[v.cliente].facturasPeriodo += 1;
+      clientes[v.cliente].vendidoPeriodo += Number(v.monto);
+    }
+    if (v.estado !== 'pagado') {
+      clientes[v.cliente].debeActual += saldoPendiente(v);
+    }
+  });
+  const filas = Object.entries(clientes)
+    .filter(([_, c]) => c.facturasPeriodo > 0 || c.debeActual > 0)
+    .sort((a,b) => b[1].debeActual - a[1].debeActual || b[1].vendidoPeriodo - a[1].vendidoPeriodo);
+
+  if (filas.length === 0) {
+    $('clientTableBody').innerHTML = `<tr><td colspan="4" style="font-family:var(--font-body);color:var(--text-muted);text-align:center;padding:1.5rem 0;">No hay actividad de clientes en este período.</td></tr>`;
+    return;
+  }
+
+  $('clientTableBody').innerHTML = filas.map(([nombre, c]) => `
+    <tr>
+      <td class="nombre">${escapeHtml(nombre)}</td>
+      <td>${c.facturasPeriodo}</td>
+      <td>${formatMonto(c.vendidoPeriodo)}</td>
+      <td class="${c.debeActual > 0 ? 'debe' : ''}">${formatMonto(c.debeActual)}</td>
+    </tr>
+  `).join('');
+}
+
+$('tabs').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('tab')) return;
+  document.querySelectorAll('#tabs .tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  const tab = e.target.dataset.tab;
+  $('viewVentas').style.display = tab === 'ventas' ? '' : 'none';
+  $('viewRevision').style.display = tab === 'revision' ? '' : 'none';
+  $('viewCalendario').style.display = tab === 'calendario' ? '' : 'none';
+  $('viewDeudores').style.display = tab === 'deudores' ? '' : 'none';
+  $('viewClientes').style.display = tab === 'clientes' ? '' : 'none';
+  $('viewProductos').style.display = tab === 'productos' ? '' : 'none';
+  if (tab === 'revision') renderRevision();
+  if (tab === 'calendario') renderCalendario();
+  if (tab === 'deudores') renderDeudores();
+  if (tab === 'clientes') renderClientes();
+  if (tab === 'productos') renderProductos();
+});
+
+$('periodQuick').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#periodQuick .chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  periodMode = e.target.dataset.period;
+  rangoActual = null;
+  renderRevision();
+});
+
+$('evolucionRango').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#evolucionRango .chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  evolucionMeses = parseInt(e.target.dataset.meses, 10);
+  renderEvolucion(evolucionMeses);
+});
+
+$('btnGuardarObjetivo').addEventListener('click', guardarObjetivoMensual);
+
+$('btnAplicarRango').addEventListener('click', () => {
+  const desdeVal = $('r_desde').value;
+  const hastaVal = $('r_hasta').value;
+  if (!desdeVal || !hastaVal) return;
+  const desde = parseFecha(desdeVal);
+  const hasta = parseFecha(hastaVal);
+  if (desde > hasta) {
+    mostrarAviso('La fecha desde no puede ser posterior a la fecha hasta.', 'error');
+    return;
+  }
+  document.querySelectorAll('#periodQuick .chip').forEach(c => c.classList.remove('active'));
+  rangoActual = {desde, hasta};
+  renderRevision();
+});
+
+let calDate = (() => { const d = new Date(); d.setDate(1); return d; })();
+
+function renderCalendario() {
+  const year = calDate.getFullYear(), month = calDate.getMonth();
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  $('calTitle').textContent = `${monthNames[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startOffset = (firstDay.getDay() + 6) % 7; // Lunes = 0
+  const totalDays = lastDay.getDate();
+  const prevLastDay = new Date(year, month, 0).getDate();
+
+  const eventosPorDia = {};
+  ventas.forEach(v => {
+    if (!eventosPorDia[v.fecha_vencimiento]) eventosPorDia[v.fecha_vencimiento] = [];
+    eventosPorDia[v.fecha_vencimiento].push({tipo: 'vencimiento', venta: v});
+    (v.pagos || []).forEach(p => {
+      if (!eventosPorDia[p.fecha]) eventosPorDia[p.fecha] = [];
+      eventosPorDia[p.fecha].push({tipo: 'pago', venta: v, pago: p});
+    });
+  });
+
+  let html = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => `<div class="cal-daylabel">${d}</div>`).join('');
+
+  for (let i = startOffset; i > 0; i--) {
+    html += celdaCalendarioHTML(new Date(year, month - 1, prevLastDay - i + 1), eventosPorDia, true);
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    html += celdaCalendarioHTML(new Date(year, month, d), eventosPorDia, false);
+  }
+  const totalCeldas = startOffset + totalDays;
+  const trailing = (7 - (totalCeldas % 7)) % 7;
+  for (let d = 1; d <= trailing; d++) {
+    html += celdaCalendarioHTML(new Date(year, month + 1, d), eventosPorDia, true);
+  }
+
+  $('calGrid').innerHTML = html;
+}
+
+function celdaCalendarioHTML(date, eventosPorDia, otroMes) {
+  const iso = toISODate(date);
+  const esHoy = iso === toISODate(hoy());
+  const eventos = eventosPorDia[iso] || [];
+  const maxMostrar = 3;
+
+  let eventosHTML = eventos.slice(0, maxMostrar).map(ev => {
+    if (ev.tipo === 'pago') {
+      const titulo = `Pago de ${ev.venta.cliente} · ${formatMonto(ev.pago.monto)} · Fact. ${ev.venta.factura}`;
+      return `<div class="cal-evento pago" title="${escapeHtml(titulo)}">💰 ${escapeHtml(ev.venta.cliente)}</div>`;
+    }
+    const cls = ev.venta.estado === 'pagado' ? 'pagado' : estadoDe(ev.venta);
+    const titulo = `Vencimiento de ${ev.venta.cliente} · ${formatMonto(ev.venta.monto)} · Fact. ${ev.venta.factura}`;
+    return `<div class="cal-evento ${cls}" title="${escapeHtml(titulo)}">⛔ ${escapeHtml(ev.venta.cliente)}</div>`;
+  }).join('');
+  if (eventos.length > maxMostrar) {
+    eventosHTML += `<div class="cal-more">+${eventos.length - maxMostrar} más</div>`;
+  }
+
+  return `
+    <div class="cal-cell ${otroMes ? 'otro-mes' : ''} ${esHoy ? 'hoy' : ''}">
+      <div class="cal-daynum">${date.getDate()}</div>
+      ${eventosHTML}
+    </div>`;
+}
+
+function desglosePorClientePeriodo(desde, hasta) {
+  const map = {};
+  ventas.forEach(v => {
+    if (!map[v.cliente]) map[v.cliente] = {facturasPeriodo: 0, vendidoPeriodo: 0, debeActual: 0};
+    if (enRango(v.fecha_venta, desde, hasta)) {
+      map[v.cliente].facturasPeriodo += 1;
+      map[v.cliente].vendidoPeriodo += Number(v.monto);
+    }
+    if (v.estado !== 'pagado') map[v.cliente].debeActual += saldoPendiente(v);
+  });
+  return map;
+}
+
+function rangoRevisionActual() {
+  if (rangoActual) return rangoActual;
+  return calcularRangoRapido(periodMode);
+}
+
+function exportarRevisionPDF() {
+  const {desde, hasta} = rangoRevisionActual();
+  const actual = metricasPeriodo(desde, hasta);
+  const pendienteActual = ventas.filter(v => v.estado !== 'pagado').reduce((s,v) => s + saldoPendiente(v), 0);
+
+  const map = desglosePorClientePeriodo(desde, hasta);
+  const filas = Object.entries(map)
+    .filter(([_, c]) => c.facturasPeriodo > 0 || c.debeActual > 0)
+    .sort((a,b) => b[1].debeActual - a[1].debeActual || b[1].vendidoPeriodo - a[1].vendidoPeriodo);
+
+  const filasHTML = filas.map(([nombre, c]) => `
+    <tr>
+      <td>${escapeHtml(nombre)}</td>
+      <td>${c.facturasPeriodo}</td>
+      <td>${formatMonto(c.vendidoPeriodo)}</td>
+      <td class="${c.debeActual > 0 ? 'vencida' : ''}">${formatMonto(c.debeActual)}</td>
+    </tr>`).join('');
+
+  $('printArea').innerHTML = `
+    <div class="print-header">
+      <h1>Tacca Hnos. S.A. — Revisión de período</h1>
+      <p>${formatRangoLabel(desde, hasta)} · generado el ${formatFechaObj(hoy())}</p>
+    </div>
+    <table class="print-table">
+      <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
+      <tbody>
+        <tr><td>Vendido en el período</td><td>${formatMonto(actual.vendido)}</td></tr>
+        <tr><td>Cobrado en el período</td><td>${formatMonto(actual.cobrado)}</td></tr>
+        <tr><td>Pendiente actual (a hoy)</td><td>${formatMonto(pendienteActual)}</td></tr>
+      </tbody>
+    </table>
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">Por cliente</p>
+    <table class="print-table">
+      <thead><tr><th>Cliente</th><th>Facturas (período)</th><th>Vendido (período)</th><th>Debe actualmente</th></tr></thead>
+      <tbody>${filasHTML || '<tr><td colspan="4" style="text-align:center;">Sin actividad en el período.</td></tr>'}</tbody>
+    </table>
+  `;
+  window.print();
+}
+
+function exportarRevisionExcel() {
+  const {desde, hasta} = rangoRevisionActual();
+  const map = desglosePorClientePeriodo(desde, hasta);
+  const filas = Object.entries(map).sort((a,b) => b[1].debeActual - a[1].debeActual);
+
+  let csv = 'Cliente,Facturas periodo,Vendido periodo,Debe actualmente\n';
+  filas.forEach(([nombre, c]) => {
+    csv += `"${nombre.replace(/"/g,'""')}",${c.facturasPeriodo},${c.vendidoPeriodo.toFixed(2)},${c.debeActual.toFixed(2)}\n`;
+  });
+
+  const blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `revision_tacca_${toISODate(new Date())}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function generarPDFVencimientos() {
+  const pendientes = ventas
+    .filter(v => v.estado !== 'pagado')
+    .slice()
+    .sort((a,b) => parseFecha(a.fecha_vencimiento) - parseFecha(b.fecha_vencimiento));
+
+  const totalPendiente = pendientes.reduce((s,v) => s + saldoPendiente(v), 0);
+  const hoyStr = formatFechaObj(hoy());
+
+  const filas = pendientes.map(v => {
+    const dias = diasHasta(v.fecha_vencimiento);
+    const estadoTxt = dias < 0
+      ? `Vencida hace ${Math.abs(dias)} día${Math.abs(dias)===1?'':'s'}`
+      : (dias === 0 ? 'Vence hoy' : `Vence en ${dias} día${dias===1?'':'s'}`);
+    const saldo = saldoPendiente(v);
+    const montoTxt = v.estado === 'parcial'
+      ? `${formatMonto(saldo)} <span style="color:#888;">(saldo de ${formatMonto(v.monto)})</span>`
+      : formatMonto(v.monto);
+    return `
+      <tr>
+        <td>${escapeHtml(v.cliente)}</td>
+        <td>${escapeHtml(v.factura)}</td>
+        <td>${escapeHtml(v.producto || '—')}</td>
+        <td>${montoTxt}</td>
+        <td>${formatFecha(v.fecha_vencimiento)}</td>
+        <td class="${dias < 0 ? 'vencida' : ''}">${estadoTxt}</td>
+      </tr>`;
+  }).join('');
+
+  $('printArea').innerHTML = `
+    <div class="print-header">
+      <h1>Tacca Hnos. S.A. — Facturas a vencer</h1>
+      <p>Listado generado el ${hoyStr} · ordenado por vencimiento, la más próxima primero · el monto es el saldo pendiente</p>
+    </div>
+    <table class="print-table">
+      <thead>
+        <tr><th>Cliente</th><th>Factura</th><th>Producto</th><th>Saldo pendiente</th><th>Vencimiento</th><th>Estado</th></tr>
+      </thead>
+      <tbody>
+        ${filas || '<tr><td colspan="6" style="text-align:center;">No hay facturas pendientes.</td></tr>'}
+      </tbody>
+    </table>
+    <p class="print-total">Total pendiente de cobro: ${formatMonto(totalPendiente)} (${pendientes.length} factura${pendientes.length===1?'':'s'})</p>
+  `;
+
+  window.print();
+}
+
+function exportarBackup() {
+  const payload = {
+    app: 'control_facturacion_tacca',
+    generado: toISODate(new Date()),
+    ventas: ventas,
+    clientes: clientes,
+    productos: productos
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `backup_tacca_facturacion_${toISODate(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importarBackup(file) {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    let data;
+    try {
+      data = JSON.parse(e.target.result);
+    } catch (err) {
+      mostrarAviso('El archivo no es un backup válido (JSON corrupto).', 'error');
+      return;
+    }
+    const lista = Array.isArray(data) ? data : data.ventas;
+    if (!Array.isArray(lista)) {
+      mostrarAviso('El archivo no tiene el formato esperado de un backup de esta app.', 'error');
+      return;
+    }
+    const listaClientes = Array.isArray(data.clientes) ? data.clientes : [];
+    const listaProductos = Array.isArray(data.productos) ? data.productos : [];
+    const ok = await confirmarAccion(`Este archivo tiene ${lista.length} venta(s), ${listaClientes.length} cliente(s) y ${listaProductos.length} producto(s). Esto va a REEMPLAZAR todos los datos actuales de la app. ¿Continuar?`);
+    if (!ok) return;
+    ventas = lista;
+    ventas.forEach(v => { if (!v.pagos) v.pagos = []; if (!v.gestiones) v.gestiones = []; });
+    clientes = listaClientes;
+    productos = listaProductos;
+    await guardarEnStorage();
+    await guardarClientesEnStorage();
+    await guardarProductosEnStorage();
+    refreshTodasLasVistas();
+    mostrarAviso('Backup importado correctamente.', null, true);
+  };
+  reader.readAsText(file);
+}
+
+$('btnDatosMenu').addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('dropdownMenu').classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  if (!$('dropdownMenu').contains(e.target) && e.target !== $('btnDatosMenu')) {
+    $('dropdownMenu').classList.remove('open');
+  }
+});
+
+$('btnExportar').addEventListener('click', () => {
+  exportarBackup();
+  $('dropdownMenu').classList.remove('open');
+});
+$('btnImportar').addEventListener('click', () => {
+  $('dropdownMenu').classList.remove('open');
+  $('inputImportar').click();
+});
+$('inputImportar').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) importarBackup(file);
+  e.target.value = '';
+});
+
+$('btnDescargarPDF').addEventListener('click', generarPDFVencimientos);
+$('btnExportarRevisionPDF').addEventListener('click', exportarRevisionPDF);
+$('btnExportarRevisionExcel').addEventListener('click', exportarRevisionExcel);
+
+$('calPrev').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendario(); });
+$('calNext').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendario(); });
+$('calHoy').addEventListener('click', () => { calDate = new Date(); calDate.setDate(1); renderCalendario(); });
+
+function renderDeudores() {
+  const vencidas = ventas
+    .filter(v => v.estado !== 'pagado' && diasHasta(v.fecha_vencimiento) < 0)
+    .slice()
+    .sort((a,b) => diasHasta(a.fecha_vencimiento) - diasHasta(b.fecha_vencimiento));
+
+  const totalVencido = vencidas.reduce((s,v) => s + saldoPendiente(v), 0);
+
+  $('deudoresStats').innerHTML = `
+    <div class="stat orange">
+      <div class="label">Facturas vencidas sin cobrar</div>
+      <div class="value">${vencidas.length}</div>
+      <div class="sub">a pesar de pagos parciales, si hay saldo y venció, está acá</div>
+    </div>
+    <div class="stat orange">
+      <div class="label">Total vencido</div>
+      <div class="value">${formatMonto(totalVencido)}</div>
+      <div class="sub">saldo pendiente de estas facturas</div>
+    </div>
+  `;
+
+  if (vencidas.length === 0) {
+    $('deudoresList').innerHTML = `
+      <div class="empty">
+        <h3>No tenés facturas vencidas sin cobrar 🎉</h3>
+        <p>Cuando una factura pendiente pase su fecha de vencimiento sin estar totalmente cobrada, va a aparecer acá.</p>
+      </div>`;
+    return;
+  }
+
+  const mapMorosidad = calcularMorosidad();
+  $('deudoresList').innerHTML = vencidas.map(v => deudorCardHTML(v, mapMorosidad)).join('');
+}
+
+function deudorCardHTML(v, mapMorosidad) {
+  const dias = Math.abs(diasHasta(v.fecha_vencimiento));
+  const saldo = saldoPendiente(v);
+  const pagado = montoPagado(v);
+  const esReincidente = mapMorosidad && esClienteMoroso(v.cliente, mapMorosidad);
+  const gestiones = (v.gestiones || []).slice().sort((a,b) => parseFecha(b.fecha) - parseFecha(a.fecha));
+
+  const gestionesHTML = gestiones.length
+    ? gestiones.map(g => `
+      <div class="gestion-item">
+        <span class="gestion-fecha">${formatFecha(g.fecha)}</span>
+        <span class="gestion-texto">${escapeHtml(g.texto)}</span>
+        <button class="gestion-del" onclick="eliminarGestion('${v.id}','${g.id}')" title="Eliminar esta gestión">✕</button>
+      </div>`).join('')
+    : `<div class="gestion-vacio">Todavía no registraste ninguna gestión de cobro.</div>`;
+
+  return `
+    <div class="deudor-card">
+      <div class="deudor-header">
+        <div class="deudor-titulo">
+          <span class="cliente">${escapeHtml(v.cliente)}</span>
+          <span class="factura">Fact. ${escapeHtml(v.factura)}</span>
+          ${esReincidente ? '<span class="badge vencido" style="font-size:10.5px;">⚠️ reincidente</span>' : ''}
+        </div>
+        <div class="deudor-monto-wrap">
+          <span class="monto">${formatMonto(saldo)}</span>
+          <span class="badge vencido">Vencida hace ${dias} día${dias===1?'':'s'}</span>
+        </div>
+      </div>
+      <div class="deudor-detalle">Vencimiento: ${formatFecha(v.fecha_vencimiento)} · ${escapeHtml(v.producto || '—')} · ${escapeHtml(v.condicion)}</div>
+      ${pagado > 0 ? `<div class="pagos-info">💰 Ya cobraste ${formatMonto(pagado)} de ${formatMonto(v.monto)}</div>` : ''}
+      <div class="gestiones-list">${gestionesHTML}</div>
+      <div class="gestion-form">
+        <input type="date" id="gf_${v.id}" value="${toISODate(new Date())}">
+        <input type="text" id="gt_${v.id}" placeholder="Ej: Se lo contactó por WhatsApp, dijo que paga el viernes">
+        <button class="ghost" onclick="agregarGestion('${v.id}')">+ Agregar gestión</button>
+      </div>
+    </div>`;
+}
+
+async function agregarGestion(id) {
+  const v = ventas.find(x => x.id === id);
+  if (!v) return;
+  const fechaInput = $('gf_' + id);
+  const textoInput = $('gt_' + id);
+  const fecha = fechaInput.value || toISODate(new Date());
+  const texto = textoInput.value.trim();
+  if (!texto) {
+    mostrarAviso('Escribí una nota antes de agregar la gestión.', 'error');
+    return;
+  }
+  if (!v.gestiones) v.gestiones = [];
+  v.gestiones.push({
+    id: 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+    fecha,
+    texto
+  });
+  await guardarEnStorage();
+  renderDeudores();
+}
+
+async function eliminarGestion(ventaId, gestionId) {
+  const v = ventas.find(x => x.id === ventaId);
+  if (!v) return;
+  v.gestiones = (v.gestiones || []).filter(g => g.id !== gestionId);
+  await guardarEnStorage();
+  renderDeudores();
+}
+
+const CLIENTES_A_IMPORTAR = [{"codigo": 1, "nombre": "CONSUMIDOR FINAL"}, {"codigo": 2, "nombre": "SECURITY SUPPLY S.A."}, {"codigo": 3, "nombre": "CONFECAT S.A."}, {"codigo": 4, "nombre": "BORIS HNOS. S.A."}, {"codigo": 5, "nombre": "Borcal S.A."}, {"codigo": 6, "nombre": "MACSI S.A."}, {"codigo": 9, "nombre": "Segucal  S.R.L."}, {"codigo": 10, "nombre": "Vicla S.A."}, {"codigo": 13, "nombre": "DAMALU S.R.L."}, {"codigo": 17, "nombre": "MAINCAL S.A."}, {"codigo": 21, "nombre": "HECTOR FACUNDO QUIROGA"}, {"codigo": 25, "nombre": "RENDA GLADYS PATRICIA"}, {"codigo": 27, "nombre": "CALZADOS ARGENTINOS S.A."}, {"codigo": 30, "nombre": "BARBA CUSOT S.R.L."}, {"codigo": 31, "nombre": "INDUSTRIAS CONTARDO S.A.I.C."}, {"codigo": 36, "nombre": "UNPAR S.R.L."}, {"codigo": 39, "nombre": "COOP. DE TRABAJO DESDE EL PIE"}, {"codigo": 40, "nombre": "TAVIS de Tavitian Juan Carlos"}, {"codigo": 41, "nombre": "CEREMINATI LUIS ALBERTO CEREMINATI JORGE ENRIQUE"}, {"codigo": 45, "nombre": "SAFETY & STYLE S.R.L."}, {"codigo": 46, "nombre": "BOGOS S.R.L."}, {"codigo": 47, "nombre": "ALEMAN HUGO RAUL"}, {"codigo": 48, "nombre": "SOUTER S.A."}, {"codigo": 50, "nombre": "LUIS ERNESTO RODRIGUEZ"}, {"codigo": 52, "nombre": "FRANCISCO DEL BOCA"}, {"codigo": 55, "nombre": "METALURGICA RAULET SRL"}, {"codigo": 56, "nombre": "PEDRO SANGUINETTO"}, {"codigo": 57, "nombre": "MARCELO KALIK"}, {"codigo": 58, "nombre": "PATRICIA GARCIA"}, {"codigo": 59, "nombre": "ECSE S.R.L."}, {"codigo": 60, "nombre": "ARZOUMANIAN"}, {"codigo": 61, "nombre": "FRANCISCO CAPUANO"}, {"codigo": 63, "nombre": "CARLOS ALTAMIRANO"}, {"codigo": 64, "nombre": "ROZZANO CALZADOS"}, {"codigo": 65, "nombre": "CASA GREGORIO"}, {"codigo": 66, "nombre": "BE SAFE SAS"}, {"codigo": 67, "nombre": "ABANCUER"}, {"codigo": 68, "nombre": "TKW S.A."}, {"codigo": 69, "nombre": "ELMER ENRIQUE DIESTRA GIL"}, {"codigo": 70, "nombre": "FLAVIA OSCAREZ"}, {"codigo": 71, "nombre": "INDUSTRIALS IMPORTS S.A."}, {"codigo": 72, "nombre": "DIEDRICH EDUARDO EMMANUEL"}, {"codigo": 73, "nombre": "OSVHER SAS"}, {"codigo": 74, "nombre": "BOCAT S.A."}, {"codigo": 76, "nombre": "LUCAS RANZINI"}, {"codigo": 77, "nombre": "OPERACIONES ENTRE MONEDAS"}, {"codigo": 78, "nombre": "RESULTADOS FINANCIEROS EN PESOS"}, {"codigo": 79, "nombre": "RESULTADOS FINANCIEROS EN DOLARES"}, {"codigo": 81, "nombre": "INDEMNIZACIONES SEGUROS (ART)"}, {"codigo": 82, "nombre": "AJUSTE"}, {"codigo": 83, "nombre": "ADRIAN LASALA"}, {"codigo": 84, "nombre": "PRESTAMOS ETA"}, {"codigo": 85, "nombre": "CHARS S.R.L."}, {"codigo": 86, "nombre": "COOPECAL"}, {"codigo": 88, "nombre": "M.E. SAS"}, {"codigo": 89, "nombre": "BANCO GALICIA"}, {"codigo": 90, "nombre": "INDUSTRIAS PULQUI S.A."}, {"codigo": 91, "nombre": "SANDRA FRATTINI"}, {"codigo": 92, "nombre": "MAXIMILIANO SABIA"}, {"codigo": 93, "nombre": "PALUBEL S.R.L."}, {"codigo": 94, "nombre": "COOP. PRIMER PUEBLO PATRIO LIMITADA"}, {"codigo": 95, "nombre": "EMANUEL DAMIAN SZOT"}, {"codigo": 96, "nombre": "PATRICIO ALEJANDRO CARRIZO"}, {"codigo": 98, "nombre": "DUNTOP S.R.L"}, {"codigo": 99, "nombre": "BUSTIN SOLUCIONES INDUSTRIALES S.A"}, {"codigo": 100, "nombre": "CON ARGENTINA S.R.L"}, {"codigo": 101, "nombre": "P&M INDUSTRIAL S.A."}, {"codigo": 102, "nombre": "INDUSTRIAS GEO S.A."}, {"codigo": 103, "nombre": "DENEB S.A."}, {"codigo": 104, "nombre": "GRUPO COSMETICA S.A."}, {"codigo": 105, "nombre": "BANCO CREDICOOP"}, {"codigo": 106, "nombre": "GRUPO IAN DELTA S.R.L"}, {"codigo": 107, "nombre": "MARASCO JUAN IGNACIO"}, {"codigo": 108, "nombre": "SERGIO MARCELO VENTURA"}, {"codigo": 109, "nombre": "GILBERTO MOREL SAMUDIO"}, {"codigo": 110, "nombre": "RAWAI S.A."}, {"codigo": 111, "nombre": "CALZADOS OLMOS"}, {"codigo": 112, "nombre": "PUNTO MEDIO CLIMATIZACION S.A."}, {"codigo": 113, "nombre": "MARCO VALLANA ACCESORIOS INDUSTRIALES S.R.L,"}, {"codigo": 114, "nombre": "PASTALINDA SOCIEDAD ANONIMA"}, {"codigo": 115, "nombre": "TEXAS CONTROLS INDUSTRIAL S.A.S"}, {"codigo": 116, "nombre": "ACEROS COMECO S.A"}, {"codigo": 117, "nombre": "UNO EN UNO CONSTRUCCIONES S.A."}, {"codigo": 118, "nombre": "TECMADE S.A."}, {"codigo": 119, "nombre": "CHR HANSEN ARGENTINA S A I C"}, {"codigo": 120, "nombre": "DIEGO BENTO"}, {"codigo": 121, "nombre": "MONTIK S.R.L"}, {"codigo": 122, "nombre": "CALZADOS CABURE S.R.L"}, {"codigo": 123, "nombre": "HERCAL"}, {"codigo": 124, "nombre": "CAL.SEG.IND. S.A."}, {"codigo": 125, "nombre": "COMERCIAL ARGENTINA S.R.L"}, {"codigo": 126, "nombre": "AGROCOMERCIAL Y MINERIA MES-OR S.R.L."}, {"codigo": 127, "nombre": "DAGFAL SRL"}, {"codigo": 128, "nombre": "BIOGAS SRL"}, {"codigo": 129, "nombre": "TRANSLOG SA"}, {"codigo": 130, "nombre": "WORK SHEOS S.R.L."}, {"codigo": 131, "nombre": "ROZAS DE MADRID"}, {"codigo": 132, "nombre": "TECNOBOOT ARGENTINA S.R.L"}, {"codigo": 133, "nombre": "INTEGRAL WORK S.R.L."}, {"codigo": 136, "nombre": "BLADIMIRO BORIS S. A."}, {"codigo": 140, "nombre": "NELIDA DORA SORAIDE"}, {"codigo": 144, "nombre": "INDUSTRIA SEGUTEK S.A."}, {"codigo": 156, "nombre": "GLOBE TRACK S.A."}, {"codigo": 161, "nombre": "COOP.DE TRABAJO POSTA DE S.MAR"}, {"codigo": 163, "nombre": "CHILCAL S.A."}, {"codigo": 171, "nombre": "BOTECCHIA Angel Jose Pedro"}, {"codigo": 173, "nombre": "SEKURITY LEATHER S.A."}, {"codigo": 175, "nombre": "CALZADOS CUYO S.A."}, {"codigo": 182, "nombre": "CALZADOS CON TECNOLOGIA S.A."}, {"codigo": 183, "nombre": "STARTEX S.A."}, {"codigo": 184, "nombre": "FABI-LOR E Hijos SRL."}, {"codigo": 188, "nombre": "LAKE INTERNATIONAL"}, {"codigo": 193, "nombre": "JUANLENOI SRL"}, {"codigo": 194, "nombre": "CALZADOS DUROTECH SRL"}, {"codigo": 195, "nombre": "SIMON SRL."}, {"codigo": 196, "nombre": "BLACK QUEEN SRL."}, {"codigo": 198, "nombre": "INDUMENTARIA PROACTIVA RASA S.A."}, {"codigo": 199, "nombre": "NEBCO INC SRL."}, {"codigo": 200, "nombre": "INDUSTRIAS LT. SRL."}, {"codigo": 217, "nombre": "CHAMORRO MARCELO ADRIAN"}, {"codigo": 224, "nombre": "INTEGRAL KA S.A."}, {"codigo": 226, "nombre": "GAMAX S.A."}, {"codigo": 237, "nombre": "TRUEBA DANIEL ALEJANDRO"}, {"codigo": 238, "nombre": "Safety Shoes S.R.L"}, {"codigo": 239, "nombre": "METALURGICA AG S.R.L"}, {"codigo": 240, "nombre": "BERTINI CAMILA MICHELLE"}, {"codigo": 241, "nombre": "CALVIC S.A."}, {"codigo": 247, "nombre": "MACIEL REYES MARIO ORLANDO"}, {"codigo": 251, "nombre": "SEGUMAT S.A"}, {"codigo": 252, "nombre": "ASOCIACION MUTUAL SOLIDARIA POLICIAL"}, {"codigo": 255, "nombre": "WARMA S.A."}, {"codigo": 256, "nombre": "PECHENY MONICA INES"}, {"codigo": 257, "nombre": "RAFAEL DEL CORRO"}, {"codigo": 259, "nombre": "INDUSTRIA ETA"}];
+
+async function importarClientesSemilla() {
+  let flag = null;
+  try {
+    flag = await window.storage.get('seed_ctes_importado', false);
+  } catch (e) { flag = null; }
+  if (flag) return;
+
+  const existentes = new Set(clientes.map(c => c.nombre.trim().toLowerCase()));
+  let agregados = 0;
+  CLIENTES_A_IMPORTAR.forEach(item => {
+    const nombre = item.nombre.trim();
+    if (!nombre || existentes.has(nombre.toLowerCase())) return;
+    clientes.push({
+      id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      nombre,
+      telefono: '',
+      cuit: '',
+      email: '',
+      notas: 'Codigo de cliente (sistema anterior): ' + item.codigo
+    });
+    existentes.add(nombre.toLowerCase());
+    agregados++;
+  });
+
+  if (agregados > 0) {
+    await guardarClientesEnStorage();
+    actualizarDatalistClientes();
+    mostrarAviso('Se importaron ' + agregados + ' clientes desde la base historica.', null, true);
+  }
+  try {
+    await window.storage.set('seed_ctes_importado', 'true', false);
+  } catch (e) { /* noop */ }
+}
+
+const PROMEDIOS_A_IMPORTAR = [{"nombre": "STARTEX S.A.", "estimado": 16286}, {"nombre": "MACSI S.A.", "estimado": 7600}, {"nombre": "ECSE S.R.L.", "estimado": 7511}, {"nombre": "FABI-LOR E Hijos SRL.", "estimado": 5657}, {"nombre": "BLADIMIRO BORIS S. A.", "estimado": 3527}, {"nombre": "GAMAX S.A.", "estimado": 4133}, {"nombre": "INDUSTRIA SEGUTEK S.A.", "estimado": 9263}, {"nombre": "BORIS HNOS. S.A.", "estimado": 10700}, {"nombre": "CHARS S.R.L.", "estimado": 5313}, {"nombre": "DAMALU S.R.L.", "estimado": 3513}, {"nombre": "BOCAT S.A.", "estimado": 7227}, {"nombre": "CALZADOS ARGENTINOS S.A.", "estimado": 1856}, {"nombre": "ARZOUMANIAN", "estimado": 1467}, {"nombre": "GLOBE TRACK S.A.", "estimado": 1200}, {"nombre": "Vicla S.A.", "estimado": 1840}, {"nombre": "CALZADOS CUYO S.A.", "estimado": 1314}, {"nombre": "DENEB S.A.", "estimado": 8693}, {"nombre": "CHILCAL S.A.", "estimado": 5000}, {"nombre": "SILVIA ESTER BAILIN", "estimado": 2150}, {"nombre": "DUNTOP S.R.L", "estimado": 1450}, {"nombre": "FRANCISCO DEL BOCA", "estimado": 900}, {"nombre": "BOGOS S.R.L.", "estimado": 3500}, {"nombre": "OSVHER SAS", "estimado": 483}, {"nombre": "PATRICIA GARCIA", "estimado": 675}, {"nombre": "SIMON SRL.", "estimado": 3320}, {"nombre": "INDUSTRIAS CONTARDO S.A.I.C.", "estimado": 2300}, {"nombre": "TRUEBA DANIEL ALEJANDRO", "estimado": 350}, {"nombre": "INTEGRAL KA S.A.", "estimado": 1871}, {"nombre": "Borcal S.A.", "estimado": 1877}, {"nombre": "BERTINI CAMILA MICHELLE", "estimado": 4500}];
+
+async function importarPromediosSemilla() {
+  let flag = null;
+  try {
+    flag = await window.storage.get('seed_promedios_importado', false);
+  } catch (e) { flag = null; }
+  if (flag) return;
+
+  let actualizados = 0;
+  let creados = 0;
+  PROMEDIOS_A_IMPORTAR.forEach(item => {
+    const nombre = item.nombre.trim();
+    if (!nombre) return;
+    const existente = clientes.find(c => c.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (existente) {
+      if (existente.estimado_mensual == null) {
+        existente.estimado_mensual = item.estimado;
+        actualizados++;
+      }
+    } else {
+      clientes.push({
+        id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        nombre,
+        telefono: '',
+        cuit: '',
+        email: '',
+        estimado_mensual: item.estimado,
+        notas: ''
+      });
+      creados++;
+    }
+  });
+
+  if (actualizados > 0 || creados > 0) {
+    await guardarClientesEnStorage();
+    actualizarDatalistClientes();
+    mostrarAviso(`Promedios de compra cargados: ${actualizados} clientes actualizados, ${creados} nuevos.`, null, true);
+  }
+  try {
+    await window.storage.set('seed_promedios_importado', 'true', false);
+  } catch (e) { /* noop */ }
+}
+
+async function cargarClientes() {
+  try {
+    const result = await window.storage.get('clientes', false);
+    clientes = result ? JSON.parse(result.value) : [];
+  } catch (e) {
+    clientes = [];
+  }
+  actualizarDatalistClientes();
+  await importarClientesSemilla();
+  await importarPromediosSemilla();
+  if ($('viewClientes').style.display !== 'none') renderClientes();
+}
+
+async function guardarClientesEnStorage() {
+  try {
+    await window.storage.set('clientes', JSON.stringify(clientes), false);
+  } catch (e) {
+    mostrarAviso('No se pudo guardar la ficha del cliente. Probá de nuevo.', 'error');
+  }
+}
+
+function actualizarDatalistClientes() {
+  const nombres = new Set();
+  clientes.forEach(c => nombres.add(c.nombre));
+  ventas.forEach(v => nombres.add(v.cliente));
+  $('listaClientes').innerHTML = Array.from(nombres).sort()
+    .map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
+function telefonoWA(telefono) {
+  if (!telefono) return null;
+  let digits = telefono.replace(/\D/g, '');
+  if (!digits) return null;
+  if (!digits.startsWith('54')) digits = '549' + digits;
+  return digits;
+}
+
+let objetivoMensual = 0;
+
+async function cargarObjetivoMensual() {
+  try {
+    const result = await window.storage.get('objetivo_mensual_items', false);
+    objetivoMensual = result ? Number(result.value) || 0 : 0;
+  } catch (e) {
+    objetivoMensual = 0;
+  }
+}
+
+async function guardarObjetivoMensual() {
+  const val = parseFloat($('objetivoMensualInput').value);
+  if (isNaN(val) || val < 0) {
+    mostrarAviso('Ingresá un objetivo válido (número mayor o igual a 0).', 'error');
+    return;
+  }
+  objetivoMensual = val;
+  try {
+    await window.storage.set('objetivo_mensual_items', String(val), false);
+  } catch (e) { /* noop */ }
+  mostrarAviso('Objetivo mensual actualizado.', null, true);
+  renderGestionVentas();
+}
+
+function calcularGestionVentasMes() {
+  const t = hoy();
+  const desde = new Date(t.getFullYear(), t.getMonth(), 1);
+  const hasta = new Date(t.getFullYear(), t.getMonth() + 1, 0);
+  const ventasMes = ventas.filter(v => enRango(v.fecha_venta, desde, hasta));
+  const pedidos = ventasMes.length;
+  const itemsVendidos = ventasMes.reduce((s,v) => s + (v.cantidad != null && !isNaN(v.cantidad) ? Number(v.cantidad) : 0), 0);
+  return {pedidos, itemsVendidos};
+}
+
+function renderGestionVentas() {
+  const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const t = hoy();
+  $('gestionMesLabel').textContent = `${monthNames[t.getMonth()]} ${t.getFullYear()}`;
+  if (document.activeElement !== $('objetivoMensualInput')) {
+    $('objetivoMensualInput').value = objetivoMensual || '';
+  }
+
+  const {pedidos, itemsVendidos} = calcularGestionVentasMes();
+  const diferencia = Math.round(itemsVendidos - objetivoMensual);
+
+  let diferenciaHTML, claseStat;
+  if (!objetivoMensual) {
+    diferenciaHTML = '<div class="value">—</div><div class="sub">Cargá un objetivo para comparar</div>';
+    claseStat = '';
+  } else if (diferencia >= 0) {
+    diferenciaHTML = `<div class="value">+${diferencia}</div><div class="sub">por encima del objetivo</div>`;
+    claseStat = 'green';
+  } else {
+    diferenciaHTML = `<div class="value">${diferencia}</div><div class="sub">por debajo del objetivo</div>`;
+    claseStat = 'orange';
+  }
+
+  $('gestionStats').innerHTML = `
+    <div class="stat">
+      <div class="label">Pedidos este mes</div>
+      <div class="value">${pedidos}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Ítems vendidos este mes</div>
+      <div class="value">${itemsVendidos}</div>
+      <div class="sub">${objetivoMensual ? 'objetivo: ' + objetivoMensual : 'sin objetivo cargado'}</div>
+    </div>
+    <div class="stat ${claseStat}">
+      <div class="label">Diferencia vs. objetivo</div>
+      ${diferenciaHTML}
+    </div>
+  `;
+}
+
+function historicoCantidadPorCliente() {
+  const map = {};
+  ventas.forEach(v => {
+    if (v.cantidad == null || isNaN(v.cantidad)) return;
+    if (!map[v.cliente]) map[v.cliente] = {sumCantidad: 0, compras: 0, ultimaCompra: null};
+    const m = map[v.cliente];
+    m.sumCantidad += Number(v.cantidad);
+    m.compras += 1;
+    if (!m.ultimaCompra || parseFecha(v.fecha_venta) > parseFecha(m.ultimaCompra)) {
+      m.ultimaCompra = v.fecha_venta;
+    }
+  });
+  return map;
+}
+
+function calcularRankingVentaObjetivo() {
+  const real = historicoCantidadPorCliente();
+  const nombres = new Set([
+    ...Object.keys(real),
+    ...clientes.filter(c => c.estimado_mensual != null && !isNaN(c.estimado_mensual)).map(c => c.nombre)
+  ]);
+
+  const filas = [];
+  nombres.forEach(nombre => {
+    const r = real[nombre];
+    if (r && r.compras > 0) {
+      filas.push({
+        nombre,
+        valor: r.sumCantidad / r.compras,
+        fuente: 'real',
+        detalle: `${r.compras} compra${r.compras===1?'':'s'} con cantidad cargada`,
+        ultimaCompra: r.ultimaCompra
+      });
+      return;
+    }
+    const ficha = clientes.find(c => c.nombre === nombre);
+    if (ficha && ficha.estimado_mensual != null) {
+      filas.push({
+        nombre,
+        valor: Number(ficha.estimado_mensual),
+        fuente: 'estimado',
+        detalle: 'estimado a mano, por mes',
+        ultimaCompra: null
+      });
+    }
+  });
+
+  filas.sort((a,b) => b.valor - a.valor);
+  return filas.slice(0, 10);
+}
+
+function renderVentaObjetivoRanking() {
+  const filas = calcularRankingVentaObjetivo();
+
+  if (filas.length === 0) {
+    $('ventaObjetivoRankingBody').innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1rem 0;">Todavía no hay cantidades cargadas ni promedios estimados. Sumá la cantidad al registrar una venta, o cargá un promedio estimado en la ficha del cliente.</td></tr>`;
+    return;
+  }
+
+  $('ventaObjetivoRankingBody').innerHTML = filas.map(f => `
+    <tr>
+      <td class="nombre">${escapeHtml(f.nombre)}</td>
+      <td>${Math.round(f.valor)} <span style="color:var(--text-muted);font-size:11px;">${f.fuente === 'real' ? '(real, por compra)' : '(estimado, por mes)'}</span></td>
+      <td>${escapeHtml(f.detalle)}</td>
+      <td>${f.ultimaCompra ? formatFecha(f.ultimaCompra) : '—'}</td>
+    </tr>`).join('');
+}
+
+function historicoPorCliente() {
+  const map = {};
+  ventas.forEach(v => {
+    if (!map[v.cliente]) map[v.cliente] = {totalHistorico: 0, facturas: 0, ultimaCompra: null, debeActual: 0};
+    const m = map[v.cliente];
+    m.totalHistorico += Number(v.monto);
+    m.facturas += 1;
+    if (!m.ultimaCompra || parseFecha(v.fecha_venta) > parseFecha(m.ultimaCompra)) {
+      m.ultimaCompra = v.fecha_venta;
+    }
+    if (v.estado !== 'pagado') m.debeActual += saldoPendiente(v);
+  });
+  return map;
+}
+
+function renderRanking() {
+  const map = historicoPorCliente();
+  const filas = Object.entries(map).sort((a,b) => b[1].totalHistorico - a[1].totalHistorico);
+
+  if (filas.length === 0) {
+    $('rankingBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1rem 0;">Todavía no hay ventas cargadas.</td></tr>`;
+    return;
+  }
+
+  $('rankingBody').innerHTML = filas.map(([nombre, c], i) => {
+    const diasSinComprar = c.ultimaCompra ? Math.round((hoy() - parseFecha(c.ultimaCompra)) / 86400000) : null;
+    const inactivo = diasSinComprar !== null && diasSinComprar > 90;
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td class="nombre">${escapeHtml(nombre)}${inactivo ? ' <span style="color:var(--text-muted);font-weight:400;font-size:11px;">(inactivo, +90 días sin comprar)</span>' : ''}</td>
+        <td>${formatMonto(c.totalHistorico)}</td>
+        <td>${c.facturas}</td>
+        <td>${c.ultimaCompra ? formatFecha(c.ultimaCompra) : '—'}</td>
+        <td class="${c.debeActual > 0 ? 'debe' : ''}">${formatMonto(c.debeActual)}</td>
+      </tr>`;
+  }).join('');
+}
+
+function calcularMorosidad() {
+  const map = {};
+  ventas.forEach(v => {
+    if (!map[v.cliente]) map[v.cliente] = {sumAtraso: 0, cantidadPagadas: 0, conAtraso: 0, vencidasActuales: 0, sumAtrasoActual: 0, deudaActual: 0};
+    const m = map[v.cliente];
+    if (v.estado === 'pagado' && v.fecha_pago) {
+      const atraso = Math.round((parseFecha(v.fecha_pago) - parseFecha(v.fecha_vencimiento)) / 86400000);
+      m.sumAtraso += atraso;
+      m.cantidadPagadas += 1;
+      if (atraso > 0) m.conAtraso += 1;
+    }
+    if (v.estado !== 'pagado') {
+      m.deudaActual += saldoPendiente(v);
+      const dias = diasHasta(v.fecha_vencimiento);
+      if (dias < 0) {
+        m.vencidasActuales += 1;
+        m.sumAtrasoActual += Math.abs(dias);
+      }
+    }
+  });
+  return map;
+}
+
+function esClienteMoroso(nombre, mapMorosidad) {
+  const m = mapMorosidad[nombre];
+  if (!m) return false;
+  const promedio = m.cantidadPagadas > 0 ? m.sumAtraso / m.cantidadPagadas : 0;
+  return m.vencidasActuales > 0 || promedio > 0;
+}
+
+function renderRankingMorosos() {
+  const map = calcularMorosidad();
+  const filas = Object.entries(map)
+    .filter(([_, m]) => esClienteMoroso(_, map))
+    .map(([nombre, m]) => {
+      let promedio = null;
+      let enCurso = false;
+      if (m.cantidadPagadas > 0) {
+        promedio = m.sumAtraso / m.cantidadPagadas;
+      } else if (m.vencidasActuales > 0) {
+        promedio = m.sumAtrasoActual / m.vencidasActuales;
+        enCurso = true;
+      }
+      return {nombre, promedio, enCurso, ...m};
+    })
+    .sort((a,b) => (b.vencidasActuales - a.vencidasActuales) || ((b.promedio || 0) - (a.promedio || 0)));
+
+  if (filas.length === 0) {
+    $('morososBody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem 0;">Ningún cliente con atraso por ahora. 🎉</td></tr>`;
+    return;
+  }
+
+  $('morososBody').innerHTML = filas.map(f => {
+    let atrasoTxt;
+    if (f.promedio === null) {
+      atrasoTxt = '— (sin historial)';
+    } else if (f.enCurso) {
+      atrasoTxt = `+${Math.round(f.promedio)} días (en curso)`;
+    } else if (f.promedio > 0) {
+      atrasoTxt = `+${Math.round(f.promedio)} días`;
+    } else {
+      atrasoTxt = `${Math.round(f.promedio)} días`;
+    }
+    return `
+    <tr>
+      <td class="nombre">${escapeHtml(f.nombre)}</td>
+      <td class="${f.promedio > 0 ? 'debe' : ''}">${atrasoTxt}</td>
+      <td>${f.conAtraso}/${f.cantidadPagadas}</td>
+      <td class="${f.vencidasActuales > 0 ? 'debe' : ''}">${f.vencidasActuales}</td>
+      <td class="${f.deudaActual > 0 ? 'debe' : ''}">${formatMonto(f.deudaActual)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clienteCardHTML(c) {
+  const stats = historicoPorCliente()[c.nombre] || {totalHistorico: 0, facturas: 0, ultimaCompra: null, debeActual: 0};
+  const diasSinComprar = stats.ultimaCompra ? Math.round((hoy() - parseFecha(stats.ultimaCompra)) / 86400000) : null;
+  const inactivo = diasSinComprar !== null && diasSinComprar > 90;
+  const wa = telefonoWA(c.telefono);
+
+  return `
+    <div class="cliente-card ${inactivo ? 'inactivo' : ''}">
+      <div class="cliente-info">
+        <div class="cliente-nombre">${escapeHtml(c.nombre)}</div>
+        <div class="cliente-contacto">
+          ${c.telefono ? `<span>📞 ${escapeHtml(c.telefono)}</span>` : ''}
+          ${c.cuit ? `<span>CUIT ${escapeHtml(c.cuit)}</span>` : ''}
+          ${c.email ? `<span>${escapeHtml(c.email)}</span>` : ''}
+        </div>
+        ${c.notas ? `<div class="cliente-notas">📝 ${escapeHtml(c.notas)}</div>` : ''}
+        ${(c.condicion_habitual || c.metodo_habitual) ? `<div class="cliente-contacto">💳 ${escapeHtml([c.condicion_habitual, c.metodo_habitual].filter(Boolean).join(' · '))}</div>` : ''}
+      </div>
+      <div class="cliente-stats">
+        <div class="cliente-stat"><div class="label">Histórico</div><div class="value">${formatMonto(stats.totalHistorico)}</div></div>
+        <div class="cliente-stat"><div class="label">Debe</div><div class="value debe">${formatMonto(stats.debeActual)}</div></div>
+        ${c.estimado_mensual != null ? `<div class="cliente-stat"><div class="label">Estimado/mes</div><div class="value">${c.estimado_mensual}</div></div>` : ''}
+        <div class="cliente-actions">
+          ${wa ? `<a class="wa-link" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+          <button class="iconbtn" onclick="editarCliente('${c.id}')">Editar</button>
+          <button class="iconbtn danger" onclick="eliminarCliente('${c.id}')">Eliminar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderClientes() {
+  actualizarDatalistClientes();
+  renderRanking();
+  renderRankingMorosos();
+
+  const q = ($('buscadorClientes').value || '').trim().toLowerCase();
+  let lista = clientes.slice();
+  if (q) lista = lista.filter(c => c.nombre.toLowerCase().includes(q));
+  lista.sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+  if (clientes.length === 0) {
+    $('clientesList').innerHTML = `
+      <div class="empty">
+        <h3>Todavía no cargaste ninguna ficha de cliente</h3>
+        <p>Guardá el teléfono, CUIT y email de tus clientes para tenerlos siempre a mano.</p>
+        <button class="primary" onclick="abrirFormularioCliente()">+ Nuevo cliente</button>
+      </div>`;
+    return;
+  }
+  if (lista.length === 0) {
+    $('clientesList').innerHTML = `<div class="empty"><h3>No hay resultados</h3></div>`;
+    return;
+  }
+  $('clientesList').innerHTML = lista.map(c => clienteCardHTML(c)).join('');
+}
+
+function abrirFormularioCliente(id) {
+  editandoClienteId = id || null;
+  if (id) {
+    const c = clientes.find(x => x.id === id);
+    if (!c) return;
+    $('clienteFormTitulo').textContent = 'Editar cliente';
+    $('c_nombre').value = c.nombre;
+    $('c_telefono').value = c.telefono || '';
+    $('c_cuit').value = c.cuit || '';
+    $('c_email').value = c.email || '';
+    $('c_condicion_habitual').value = c.condicion_habitual || '';
+    $('c_metodo_habitual').value = c.metodo_habitual || '';
+    $('c_estimado_mensual').value = c.estimado_mensual != null ? c.estimado_mensual : '';
+    $('c_notas').value = c.notas || '';
+  } else {
+    $('clienteFormTitulo').textContent = 'Nuevo cliente';
+    $('c_nombre').value = '';
+    $('c_telefono').value = '';
+    $('c_cuit').value = '';
+    $('c_email').value = '';
+    $('c_condicion_habitual').value = '';
+    $('c_metodo_habitual').value = '';
+    $('c_estimado_mensual').value = '';
+    $('c_notas').value = '';
+  }
+  $('clientePanel').classList.add('open');
+  $('clientePanel').scrollIntoView({behavior: 'smooth'});
+}
+
+function editarCliente(id) {
+  abrirFormularioCliente(id);
+}
+
+function cerrarFormularioCliente() {
+  $('clientePanel').classList.remove('open');
+  editandoClienteId = null;
+}
+
+async function guardarCliente() {
+  const nombre = $('c_nombre').value.trim();
+  if (!nombre) {
+    mostrarAviso('Ingresá el nombre del cliente.', 'error');
+    return;
+  }
+  const estimadoRaw = $('c_estimado_mensual').value;
+  const datos = {
+    nombre,
+    telefono: $('c_telefono').value.trim(),
+    cuit: $('c_cuit').value.trim(),
+    email: $('c_email').value.trim(),
+    condicion_habitual: $('c_condicion_habitual').value,
+    metodo_habitual: $('c_metodo_habitual').value,
+    estimado_mensual: estimadoRaw === '' ? null : parseFloat(estimadoRaw),
+    notas: $('c_notas').value.trim()
+  };
+  if (editandoClienteId) {
+    const c = clientes.find(x => x.id === editandoClienteId);
+    Object.assign(c, datos);
+  } else {
+    clientes.push({id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), ...datos});
+  }
+  await guardarClientesEnStorage();
+  cerrarFormularioCliente();
+  renderClientes();
+}
+
+async function eliminarCliente(id) {
+  const ok = await confirmarAccion('¿Eliminar esta ficha de cliente? Las ventas ya cargadas no se van a borrar.');
+  if (!ok) return;
+  clientes = clientes.filter(x => x.id !== id);
+  await guardarClientesEnStorage();
+  renderClientes();
+}
+
+$('btnNuevoCliente').addEventListener('click', () => abrirFormularioCliente());
+$('btnCancelarCliente').addEventListener('click', cerrarFormularioCliente);
+$('btnGuardarCliente').addEventListener('click', guardarCliente);
+$('buscadorClientes').addEventListener('input', renderClientes);
+
+const PRODUCTOS_A_IMPORTAR = ["PUNT. ACERO C/PESTAÑA 04-6", "PUNT. ACERO C/PESTAÑA 04-7", "PUNT. ACERO C/PESTAÑA 04-8", "PUNT. ACERO C/PESTAÑA 04-9", "PUNT. ACERO C/PESTAÑA 04-10", "PUNT. ACERO C/PESTAÑA 04-11", "PUNT. ACERO C/PESTAÑA 04-12", "PUNTERAS ACERO EN FABRICACION", "PUNT. ACERO C/PESTAÑA 59-1", "PUNT. ACERO C/PESTAÑA 59-2", "PUNT. ACERO C/PESTAÑA 59-6", "PUNT. ACERO C/PESTAÑA 59-7", "PUNT. ACERO C/PESTAÑA 59-8", "PUNT. ACERO C/PESTAÑA 59-9", "PUNT. ACERO C/PESTAÑA 59-10", "PUNT. ACERO C/PESTAÑA 59-11", "PUNT. ACERO C/PESTAÑA 17-2", "PUNT. ACERO C/PESTAÑA 17-6", "PUNT. ACERO C/PESTAÑA 17-7", "PUNT. ACERO C/PESTAÑA 17-8", "PUNT. ACERO C/PESTAÑA 17-10", "PUNT. ACERO C/PESTAÑA 17-9", "PUNT. ACERO C/PESTAÑA 17-11", "PUNT. ACERO C/PESTAÑA 88-3", "PUNT. ACERO C/PESTAÑA 88-7", "PUNT. ACERO C/PESTAÑA 88-8", "PUNT. ACERO C/PESTAÑA 88-9", "PUNT. ACERO C/PESTAÑA 88-10", "PUNT. ACERO C/PESTAÑA 88-11", "PUNT. ACERO C/PESTAÑA 75-6", "PUNT. ACERO C/PESTAÑA 75-7", "PUNT. ACERO C/PESTAÑA 75-8", "PUNT. ACERO C/PESTAÑA 75-9", "PUNT. ACERO C/PESTAÑA 75-10", "PUNT. ACERO C/PESTAÑA 75-11", "PUNT. ACERO C/PESTAÑA 75-12", "PUNT. ACERO C/PESTAÑA BR-1", "PUNT. ACERO C/PESTAÑA BR-6", "PUNT. ACERO C/PESTAÑA BR-7", "PUNT. ACERO C/PESTAÑA BR-8", "PUNT. ACERO C/PESTAÑA BR-9", "PUNT. ACERO C/PESTAÑA BR-10", "PUNT. ACERO C/PESTAÑA 60-7", "PUNT. ACERO C/PESTAÑA 60-8", "PUNT. ACERO C/PESTAÑA 60-9", "PUNT. ACERO C/PESTAÑA 60-10", "PUNT. ACERO C/PESTAÑA SR-6", "PUNT. ACERO C/PESTAÑA SR-7", "PUNT. ACERO C/PESTAÑA SR-8", "PUNT. ACERO C/PESTAÑA SR-9", "PUNT. ACERO C/PESTAÑA 58-7", "PUNT. ACERO C/PESTAÑA 58-8", "PUNT. ACERO C/PESTAÑA 58-9", "PUNT. ACERO C/PESTAÑA 58-10", "PUNT. ACERO C/PESTAÑA 58-11", "PUNT. ACERO C/PESTAÑA 12-1", "PUNT. ACERO C/PESTAÑA 12-2", "PUNT. ACERO C/PESTAÑA 12-3", "PUNT. ACERO C/PESTAÑA 12-6", "PUNT. ACERO C/PESTAÑA 12-7", "PUNT. ACERO C/PESTAÑA 12-8", "PUNT. ACERO C/PESTAÑA 12-9", "PUNT. ACERO 04-6", "PUNT. ACERO 04-7", "PUNT. ACERO 04-8", "PUNT. ACERO 04-9", "PUNT. ACERO 04-10", "PUNT. ACERO 04-11", "PUNT. ACERO 04-12", "PUNT. ACERO 58-7", "PUNT. ACERO 58-8", "PUNT. ACERO 58-9", "PUNT. ACERO 58-10", "PUNT. ACERO 58-11", "PUNT. ACERO 75.6", "PUNT. ACERO 75.7", "PUNT. ACERO 75.8", "PUNT. ACERO 75.9", "PUNT. ACERO 75.10", "PUNT. ACERO 75.11", "PUNT. ACERO 75.12", "PUNT. ACERO DIELECTRICA C/PESTAÑA", "PUNT. ACERO C/PESTAÑA 16-2", "PUNT. ACERO 12-6", "PUNT. ACERO 12-7", "PUNT. ACERO 12-8", "PUNT. ACERO 12-9", "PUNT. ACERO DIELECTRICA 04-9", "PUNT. ACERO DIELECTRICA 04-10", "PUNT. ACERO DIELECTRICA 04-11", "PUNT. ACERO DIELECTRICA 04-12", "PUNT. ACERO DIELECTRICA 04-7", "PUNT. ACERO DIELECTRICA 04-8", "PUNT. ACERO DIELECTRICA 04-6", "PUNT. ACERO C/PESTAÑA 1130-6", "PUNT. ACERO C/PESTAÑA 1130-7", "PUNT. ACERO C/PESTAÑA 1130-8", "PUNT. ACERO C/PESTAÑA 1130-9", "PUNT. ACERO C/PESTAÑA 1130-10", "PUNT. ACERO C/PESTAÑA 1130-11", "PUNT. ACERO C/PESTAÑA 559-7", "PUNT. ACERO C/PESTAÑA 559-8", "PUNT. ACERO C/PESTAÑA 559-9", "PUNT. ACERO C/PESTAÑA 559-10", "PUNT. ACERO C/PESTAÑA 559-11", "PUNT. ACERO C/PESTAÑA 117-8", "PUNT. ACERO C/PESTAÑA 117-9", "PUNT. ACERO C/PESTAÑA 117-10", "PUNT. ACERO C/PESTAÑA 604-8", "PUNT. ACERO C/PESTAÑA 604-9", "PUNT. ACERO C/PESTAÑA 604-10", "PUNT. ACERO 604-8", "PUNT. ACERO 604-9", "PUNT. ACERO 604-10", "PUNT. ACERO 558-8", "PUNT. ACERO 558-9", "PUNT. ACERO 558-10", "PUNT. ACERO 558-11", "PUNT. COMPOSITE 130-7", "PUNT. COMPOSITE 130-8", "PUNT. COMPOSITE 130-9", "PUNT. COMPOSITE 130-10", "PUNT. COMPOSITE 130-11", "PUNT. COMPOSITE 130-12", "PUNT. COMPOSITE 459-6", "PUNT. COMPOSITE 459-7", "PUNT. COMPOSITE 459-8", "PUNT. COMPOSITE 459-9", "PUNT. COMPOSITE RASA 130-7", "PUNT. COMPOSITE RASA 130-8", "PUNT. COMPOSITE RASA 130-9", "PUNT. COMPOSITE RASA 130-10", "PUNT. COMPOSITE RASA 130-11", "PUNT. COMPOSITE RASA 130-12", "PUNT. COMPOSITE 402-7", "PUNT. COMPOSITE 402-8", "PUNT. COMPOSITE 402-9", "PUNT. COMPOSITE 402-10", "PUNT. COMPOSITE 402-11", "PUNTERA DE VISITA", "PUNTERAS PLASTICAS N° 0", "PUNTERAS PLASTICAS N° 1", "PUNTERAS PLASTICAS N° 2", "PUNTERAS PLASTICAS N° 3", "PUNTERAS PLASTICAS N° 4", "PLANTILLAS N° 6", "PLANTILLAS N° 7", "PLANTILLAS N° 8", "PLANTILLAS N° 9", "PLANTILLAS N° 10", "PLANTILLAS N° 11", "PLANTILLA N°6 DIELECTRICA", "PLANTILLA N°7 DIELECTRICA", "PLANTILLA N°8 DIELECTRICA", "PLANTILLA N°9 DIELECTRICA", "PLANTILLA N°10 DIELECTRICA", "PLANTILLA N°11 DIELECTRICA", "PROTECTOR METATARSAL CHICO", "PROTECTOR METATARSAL GRANDE"];
+
+async function importarProductosSemilla() {
+  let flag = null;
+  try {
+    flag = await window.storage.get('seed_arti_importado', false);
+  } catch (e) { flag = null; }
+  if (flag) return;
+
+  const existentes = new Set(productos.map(p => p.nombre.trim().toLowerCase()));
+  let agregados = 0;
+  PRODUCTOS_A_IMPORTAR.forEach(nombreRaw => {
+    const nombre = nombreRaw.trim();
+    if (!nombre || existentes.has(nombre.toLowerCase())) return;
+    productos.push({
+      id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      nombre,
+      unidad: 'unidades',
+      notas: ''
+    });
+    existentes.add(nombre.toLowerCase());
+    agregados++;
+  });
+
+  if (agregados > 0) {
+    await guardarProductosEnStorage();
+    actualizarDatalistProductos();
+    mostrarAviso('Se importaron ' + agregados + ' productos desde el listado de stock.', null, true);
+  }
+  try {
+    await window.storage.set('seed_arti_importado', 'true', false);
+  } catch (e) { /* noop */ }
+}
+
+async function cargarProductos() {
+  try {
+    const result = await window.storage.get('productos', false);
+    productos = result ? JSON.parse(result.value) : [];
+  } catch (e) {
+    productos = [];
+  }
+  actualizarDatalistProductos();
+  await importarProductosSemilla();
+  if ($('viewProductos').style.display !== 'none') renderProductos();
+}
+
+async function guardarProductosEnStorage() {
+  try {
+    await window.storage.set('productos', JSON.stringify(productos), false);
+  } catch (e) {
+    mostrarAviso('No se pudo guardar el producto. Probá de nuevo.', 'error');
+  }
+}
+
+function actualizarDatalistProductos() {
+  const nombres = new Set();
+  productos.forEach(p => nombres.add(p.nombre));
+  ventas.forEach(v => { if (v.producto) nombres.add(v.producto); });
+  $('listaProductos').innerHTML = Array.from(nombres).sort()
+    .map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
+function historicoPorProducto() {
+  const map = {};
+  ventas.forEach(v => {
+    if (!v.producto) return;
+    if (!map[v.producto]) map[v.producto] = {facturas: 0, cantidadTotal: 0, tieneCantidad: false};
+    const m = map[v.producto];
+    m.facturas += 1;
+    if (v.cantidad != null && !isNaN(v.cantidad)) {
+      m.cantidadTotal += Number(v.cantidad);
+      m.tieneCantidad = true;
+    }
+  });
+  return map;
+}
+
+function productoCardHTML(p) {
+  const stats = historicoPorProducto()[p.nombre] || {facturas: 0, cantidadTotal: 0, tieneCantidad: false};
+  return `
+    <div class="producto-card">
+      <div class="producto-info">
+        <div class="producto-nombre">${escapeHtml(p.nombre)}</div>
+        <div class="producto-detalle">Unidad: ${escapeHtml(p.unidad)}</div>
+        ${p.notas ? `<div class="producto-notas">📝 ${escapeHtml(p.notas)}</div>` : ''}
+      </div>
+      <div class="producto-stats">
+        <div class="cliente-stat"><div class="label">Vendido histórico</div><div class="value">${stats.tieneCantidad ? stats.cantidadTotal + ' ' + p.unidad : '— (sin cantidad cargada)'}</div></div>
+        <div class="cliente-stat"><div class="label">Facturas</div><div class="value">${stats.facturas}</div></div>
+        <div class="cliente-actions">
+          <button class="iconbtn" onclick="editarProducto('${p.id}')">Editar</button>
+          <button class="iconbtn danger" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderProductos() {
+  actualizarDatalistProductos();
+  const q = ($('buscadorProductos').value || '').trim().toLowerCase();
+  let lista = productos.slice();
+  if (q) lista = lista.filter(p => p.nombre.toLowerCase().includes(q));
+  lista.sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+  if (productos.length === 0) {
+    $('productosList').innerHTML = `
+      <div class="empty">
+        <h3>Todavía no cargaste ningún producto</h3>
+        <p>Guardá tu catálogo para elegirlo rápido al cargar una venta, con cantidades en pares o unidades.</p>
+        <button class="primary" onclick="abrirFormularioProducto()">+ Nuevo producto</button>
+      </div>`;
+    return;
+  }
+  if (lista.length === 0) {
+    $('productosList').innerHTML = `<div class="empty"><h3>No hay resultados</h3></div>`;
+    return;
+  }
+  $('productosList').innerHTML = lista.map(p => productoCardHTML(p)).join('');
+}
+
+function abrirFormularioProducto(id) {
+  editandoProductoId = id || null;
+  if (id) {
+    const p = productos.find(x => x.id === id);
+    if (!p) return;
+    $('productoFormTitulo').textContent = 'Editar producto';
+    $('pr_nombre').value = p.nombre;
+    $('pr_unidad').value = p.unidad || 'pares';
+    $('pr_notas').value = p.notas || '';
+  } else {
+    $('productoFormTitulo').textContent = 'Nuevo producto';
+    $('pr_nombre').value = '';
+    $('pr_unidad').value = 'pares';
+    $('pr_notas').value = '';
+  }
+  $('productoPanel').classList.add('open');
+  $('productoPanel').scrollIntoView({behavior: 'smooth'});
+}
+
+function editarProducto(id) {
+  abrirFormularioProducto(id);
+}
+
+function cerrarFormularioProducto() {
+  $('productoPanel').classList.remove('open');
+  editandoProductoId = null;
+}
+
+async function guardarProducto() {
+  const nombre = $('pr_nombre').value.trim();
+  if (!nombre) {
+    mostrarAviso('Ingresá el nombre del producto.', 'error');
+    return;
+  }
+  const datos = {nombre, unidad: $('pr_unidad').value, notas: $('pr_notas').value.trim()};
+  if (editandoProductoId) {
+    const p = productos.find(x => x.id === editandoProductoId);
+    Object.assign(p, datos);
+  } else {
+    productos.push({id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), ...datos});
+  }
+  await guardarProductosEnStorage();
+  cerrarFormularioProducto();
+  renderProductos();
+}
+
+async function eliminarProducto(id) {
+  const ok = await confirmarAccion('¿Eliminar esta ficha de producto? Las ventas ya cargadas no se van a borrar.');
+  if (!ok) return;
+  productos = productos.filter(x => x.id !== id);
+  await guardarProductosEnStorage();
+  renderProductos();
+}
+
+$('btnNuevoProducto').addEventListener('click', () => abrirFormularioProducto());
+$('btnCancelarProducto').addEventListener('click', cerrarFormularioProducto);
+$('btnGuardarProducto').addEventListener('click', guardarProducto);
+$('buscadorProductos').addEventListener('input', renderProductos);
+
+(async () => {
+  await window.storageReady;
+  await cargarNotificaciones();
+  await cargarVentas();
+  await cargarClientes();
+  await cargarProductos();
+  await cargarObjetivoMensual();
+})();
+</script>
+<div id="printArea"></div>
+<div id="toastContainer" class="toast-container"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <p id="modalMensaje"></p>
+    <div class="modal-actions">
+      <button class="ghost" id="modalCancelar">Cancelar</button>
+      <button class="primary" id="modalConfirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
