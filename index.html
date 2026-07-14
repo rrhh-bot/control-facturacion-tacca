@@ -509,6 +509,41 @@
     text-overflow:ellipsis;
     white-space:nowrap;
   }
+  .item-producto-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:6px;
+    align-items:center;
+  }
+  .item-producto-row input[type=text]{
+    flex:2;
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-body);
+    font-size:13px;
+    background:#fff;
+  }
+  .item-producto-row input[type=number]{
+    flex:1;
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-mono);
+    font-size:13px;
+    background:#fff;
+  }
+  .item-producto-del{
+    background:transparent;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:14px;
+    padding:4px 8px;
+    border-radius:5px;
+    flex-shrink:0;
+  }
+  .item-producto-del:hover{color:var(--orange);background:var(--orange-bg);}
   .row-dates{
     font-family:var(--font-mono);
     font-size:12px;
@@ -1120,14 +1155,11 @@
         <label>Monto ($)</label>
         <input type="number" id="f_monto" placeholder="0" min="0" step="0.01">
       </div>
-      <div class="field">
-        <label>Producto</label>
-        <input type="text" id="f_producto" list="listaProductos" placeholder="Elegí o escribí un producto">
-        <datalist id="listaProductos"></datalist>
-      </div>
-      <div class="field">
-        <label>Cantidad (pares/unidades)</label>
-        <input type="number" id="f_cantidad" placeholder="Ej: 500" min="0" step="1">
+      <datalist id="listaProductos"></datalist>
+      <div class="field full">
+        <label>Productos de esta factura</label>
+        <div id="itemsProductosContainer"></div>
+        <button type="button" class="ghost" id="btnAgregarItemProducto" style="margin-top:6px;">+ Agregar producto</button>
       </div>
       <div class="field">
         <label>Condición de pago</label>
@@ -1615,7 +1647,15 @@ async function cargarVentas() {
   } catch (e) {
     ventas = [];
   }
-  ventas.forEach(v => { if (!v.pagos) v.pagos = []; if (!v.gestiones) v.gestiones = []; });
+  ventas.forEach(v => {
+    if (!v.pagos) v.pagos = [];
+    if (!v.gestiones) v.gestiones = [];
+    if (!v.productos) {
+      v.productos = v.producto ? [{producto: v.producto, cantidad: v.cantidad != null ? v.cantidad : null}] : [];
+      delete v.producto;
+      delete v.cantidad;
+    }
+  });
   render();
   avisarVencimientosHoy();
   avisarClientesMorososCercanos();
@@ -1724,7 +1764,7 @@ function ventasFiltradas() {
     lista = lista.filter(v =>
       v.cliente.toLowerCase().includes(q) ||
       v.factura.toLowerCase().includes(q) ||
-      (v.producto || '').toLowerCase().includes(q)
+      (v.productos || []).some(p => p.producto.toLowerCase().includes(q))
     );
   }
   if (filtroFechaDesde) {
@@ -1775,7 +1815,7 @@ function filaHTML(v) {
           <span class="cliente">${escapeHtml(v.cliente)}</span>
           <span class="factura">${escapeHtml(v.factura)}</span>
         </div>
-        <div class="producto">${escapeHtml(v.producto || '—')}${v.cantidad != null ? ` <span style="color:var(--text-muted);">(${v.cantidad})</span>` : ''}</div>
+        <div class="producto" title="${escapeHtml(productosResumen(v))}">${escapeHtml(productosResumen(v))}</div>
         <div class="row-dates">
           <span>Venta: ${formatFecha(v.fecha_venta)}</span>
           <span>Vence: ${formatFecha(v.fecha_vencimiento)}</span>
@@ -1818,6 +1858,46 @@ function aplicarModalidadPagoCliente() {
   if (cliente.metodo_habitual) $('f_metodo').value = cliente.metodo_habitual;
 }
 
+let itemsProductosForm = [];
+
+function renderItemsProductos() {
+  $('itemsProductosContainer').innerHTML = itemsProductosForm.map((item, idx) => `
+    <div class="item-producto-row">
+      <input type="text" list="listaProductos" placeholder="Producto" value="${escapeHtml(item.producto || '')}" oninput="actualizarItemProducto(${idx}, 'producto', this.value)">
+      <input type="number" placeholder="Cantidad" min="0" step="1" value="${item.cantidad != null ? item.cantidad : ''}" oninput="actualizarItemProducto(${idx}, 'cantidad', this.value)">
+      ${itemsProductosForm.length > 1 ? `<button type="button" class="item-producto-del" onclick="eliminarItemProducto(${idx})" title="Quitar">✕</button>` : ''}
+    </div>`).join('');
+}
+
+function actualizarItemProducto(idx, campo, valor) {
+  if (!itemsProductosForm[idx]) return;
+  itemsProductosForm[idx][campo] = valor;
+}
+
+function agregarItemProducto() {
+  itemsProductosForm.push({producto: '', cantidad: ''});
+  renderItemsProductos();
+}
+
+function eliminarItemProducto(idx) {
+  itemsProductosForm.splice(idx, 1);
+  if (itemsProductosForm.length === 0) itemsProductosForm.push({producto: '', cantidad: ''});
+  renderItemsProductos();
+}
+
+function itemsProductosDesdeVenta(v) {
+  if (v.productos && v.productos.length) {
+    return v.productos.map(p => ({producto: p.producto || '', cantidad: p.cantidad != null ? p.cantidad : ''}));
+  }
+  return [{producto: '', cantidad: ''}];
+}
+
+function productosResumen(v) {
+  const items = v.productos || [];
+  if (items.length === 0) return '—';
+  return items.map(p => p.producto + (p.cantidad != null ? ` (${p.cantidad})` : '')).join(', ');
+}
+
 function abrirFormulario() {
   editandoId = null;
   cerrarFormularioPago();
@@ -1826,8 +1906,8 @@ function abrirFormulario() {
   $('f_cliente').value = '';
   $('f_factura').value = '';
   $('f_monto').value = '';
-  $('f_producto').value = '';
-  $('f_cantidad').value = '';
+  itemsProductosForm = [{producto: '', cantidad: ''}];
+  renderItemsProductos();
   $('f_condicion').value = 'Contado';
   $('f_metodo').value = 'Transferencia';
   $('f_vencimiento').value = '';
@@ -1850,8 +1930,8 @@ function editarVenta(id) {
   $('f_cliente').value = v.cliente;
   $('f_factura').value = v.factura;
   $('f_monto').value = v.monto;
-  $('f_producto').value = v.producto;
-  $('f_cantidad').value = v.cantidad != null ? v.cantidad : '';
+  itemsProductosForm = itemsProductosDesdeVenta(v);
+  renderItemsProductos();
   $('f_condicion').value = v.condicion;
   $('f_metodo').value = v.metodo;
   $('f_vencimiento').value = v.fecha_vencimiento;
@@ -1866,30 +1946,35 @@ async function guardarVenta() {
   const monto = parseFloat($('f_monto').value);
   const fecha_venta = $('f_fecha_venta').value;
   const fecha_vencimiento = $('f_vencimiento').value;
-  const cantidadRaw = $('f_cantidad').value;
-  const cantidad = cantidadRaw === '' ? null : parseFloat(cantidadRaw);
 
   if (!cliente || !factura || !fecha_venta || !fecha_vencimiento || isNaN(monto)) {
     mostrarAviso('Completá cliente, factura, monto, fecha de venta y vencimiento.', 'error');
     return;
   }
 
+  const productosFinal = itemsProductosForm
+    .map(it => ({
+      producto: (it.producto || '').trim(),
+      cantidad: it.cantidad === '' || it.cantidad == null ? null : parseFloat(it.cantidad)
+    }))
+    .filter(it => it.producto !== '');
+
   if (editandoId) {
     const v = ventas.find(x => x.id === editandoId);
     Object.assign(v, {
       cliente, factura, monto, fecha_venta, fecha_vencimiento,
-      producto: $('f_producto').value.trim(),
-      cantidad,
+      productos: productosFinal,
       condicion: $('f_condicion').value,
       metodo: $('f_metodo').value,
       notas: $('f_notas').value.trim()
     });
+    delete v.producto;
+    delete v.cantidad;
   } else {
     ventas.push({
       id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
       cliente, factura, monto, fecha_venta, fecha_vencimiento,
-      producto: $('f_producto').value.trim(),
-      cantidad,
+      productos: productosFinal,
       condicion: $('f_condicion').value,
       metodo: $('f_metodo').value,
       notas: $('f_notas').value.trim(),
@@ -2049,6 +2134,7 @@ async function guardarPago() {
 }
 
 $('btnNueva').addEventListener('click', abrirFormulario);
+$('btnAgregarItemProducto').addEventListener('click', agregarItemProducto);
 $('btnNuevoPago').addEventListener('click', () => abrirFormularioPago());
 $('btnCancelarPago').addEventListener('click', cerrarFormularioPago);
 $('btnGuardarPago').addEventListener('click', guardarPago);
@@ -2500,7 +2586,7 @@ function generarPDFVencimientos() {
       <tr>
         <td>${escapeHtml(v.cliente)}</td>
         <td>${escapeHtml(v.factura)}</td>
-        <td>${escapeHtml(v.producto || '—')}</td>
+        <td>${escapeHtml(productosResumen(v))}</td>
         <td>${montoTxt}</td>
         <td>${formatFecha(v.fecha_vencimiento)}</td>
         <td class="${dias < 0 ? 'vencida' : ''}">${estadoTxt}</td>
@@ -2565,7 +2651,15 @@ function importarBackup(file) {
     const ok = await confirmarAccion(`Este archivo tiene ${lista.length} venta(s), ${listaClientes.length} cliente(s) y ${listaProductos.length} producto(s). Esto va a REEMPLAZAR todos los datos actuales de la app. ¿Continuar?`);
     if (!ok) return;
     ventas = lista;
-    ventas.forEach(v => { if (!v.pagos) v.pagos = []; if (!v.gestiones) v.gestiones = []; });
+    ventas.forEach(v => {
+      if (!v.pagos) v.pagos = [];
+      if (!v.gestiones) v.gestiones = [];
+      if (!v.productos) {
+        v.productos = v.producto ? [{producto: v.producto, cantidad: v.cantidad != null ? v.cantidad : null}] : [];
+        delete v.producto;
+        delete v.cantidad;
+      }
+    });
     clientes = listaClientes;
     clientes.forEach(c => {
       if (c.saldo_favor == null) c.saldo_favor = 0;
@@ -2676,7 +2770,7 @@ function deudorCardHTML(v, mapMorosidad) {
           <span class="badge vencido">Vencida hace ${dias} día${dias===1?'':'s'}</span>
         </div>
       </div>
-      <div class="deudor-detalle">Vencimiento: ${formatFecha(v.fecha_vencimiento)} · ${escapeHtml(v.producto || '—')} · ${escapeHtml(v.condicion)}</div>
+      <div class="deudor-detalle">Vencimiento: ${formatFecha(v.fecha_vencimiento)} · ${escapeHtml(productosResumen(v))} · ${escapeHtml(v.condicion)}</div>
       ${pagado > 0 ? `<div class="pagos-info">💰 Ya cobraste ${formatMonto(pagado)} de ${formatMonto(v.monto)}</div>` : ''}
       <div class="gestiones-list">${gestionesHTML}</div>
       <div class="gestion-form">
@@ -2807,7 +2901,7 @@ function calcularGestionVentasMes() {
   const hasta = new Date(t.getFullYear(), t.getMonth() + 1, 0);
   const ventasMes = ventas.filter(v => enRango(v.fecha_venta, desde, hasta));
   const pedidos = ventasMes.length;
-  const itemsVendidos = ventasMes.reduce((s,v) => s + (v.cantidad != null && !isNaN(v.cantidad) ? Number(v.cantidad) : 0), 0);
+  const itemsVendidos = ventasMes.reduce((s,v) => s + (v.productos || []).reduce((s2,p) => s2 + (p.cantidad != null && !isNaN(p.cantidad) ? Number(p.cantidad) : 0), 0), 0);
   return {pedidos, itemsVendidos};
 }
 
@@ -2854,10 +2948,12 @@ function renderGestionVentas() {
 function historicoCantidadPorCliente() {
   const map = {};
   ventas.forEach(v => {
-    if (v.cantidad == null || isNaN(v.cantidad)) return;
+    const items = (v.productos || []).filter(p => p.cantidad != null && !isNaN(p.cantidad));
+    if (items.length === 0) return;
+    const totalVenta = items.reduce((s,p) => s + Number(p.cantidad), 0);
     if (!map[v.cliente]) map[v.cliente] = {sumCantidad: 0, compras: 0, ultimaCompra: null};
     const m = map[v.cliente];
-    m.sumCantidad += Number(v.cantidad);
+    m.sumCantidad += totalVenta;
     m.compras += 1;
     if (!m.ultimaCompra || parseFecha(v.fecha_venta) > parseFecha(m.ultimaCompra)) {
       m.ultimaCompra = v.fecha_venta;
@@ -3197,7 +3293,7 @@ async function guardarProductosEnStorage() {
 function actualizarDatalistProductos() {
   const nombres = new Set();
   productos.forEach(p => nombres.add(p.nombre));
-  ventas.forEach(v => { if (v.producto) nombres.add(v.producto); });
+  ventas.forEach(v => { (v.productos || []).forEach(p => { if (p.producto) nombres.add(p.producto); }); });
   $('listaProductos').innerHTML = Array.from(nombres).sort()
     .map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
 }
@@ -3205,14 +3301,16 @@ function actualizarDatalistProductos() {
 function historicoPorProducto() {
   const map = {};
   ventas.forEach(v => {
-    if (!v.producto) return;
-    if (!map[v.producto]) map[v.producto] = {facturas: 0, cantidadTotal: 0, tieneCantidad: false};
-    const m = map[v.producto];
-    m.facturas += 1;
-    if (v.cantidad != null && !isNaN(v.cantidad)) {
-      m.cantidadTotal += Number(v.cantidad);
-      m.tieneCantidad = true;
-    }
+    (v.productos || []).forEach(item => {
+      if (!item.producto) return;
+      if (!map[item.producto]) map[item.producto] = {facturas: 0, cantidadTotal: 0, tieneCantidad: false};
+      const m = map[item.producto];
+      m.facturas += 1;
+      if (item.cantidad != null && !isNaN(item.cantidad)) {
+        m.cantidadTotal += Number(item.cantidad);
+        m.tieneCantidad = true;
+      }
+    });
   });
   return map;
 }
