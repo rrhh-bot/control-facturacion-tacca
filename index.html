@@ -456,6 +456,79 @@
     cursor:pointer;
     white-space:nowrap;
   }
+  .facturas-checklist{
+    border:1px solid var(--hairline);
+    border-radius:8px;
+    padding:8px 10px;
+    max-height:180px;
+    overflow-y:auto;
+    background:#fff;
+  }
+  .factura-check-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 2px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .factura-check-row:not(:last-child){border-bottom:1px solid var(--hairline);}
+  .factura-check-row input{flex-shrink:0;}
+  .pago-item-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+    padding:8px;
+    background:#fff;
+    border:1px solid var(--hairline);
+    border-radius:8px;
+  }
+  .pago-item-row input[type=number]{
+    width:130px;
+    padding:7px 9px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-mono);
+    font-size:13px;
+  }
+  .pago-item-row input[type=date]{
+    padding:7px 9px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-body);
+    font-size:12.5px;
+  }
+  .pago-item-cheque-toggle{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:12.5px;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+  .pago-item-cheque-toggle.activo{color:var(--blue);font-weight:600;}
+  .pago-item-deposito{background:var(--blue-bg);}
+  .pago-item-del{
+    background:transparent;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:14px;
+    padding:4px 6px;
+    margin-left:auto;
+  }
+  .pago-item-del:hover{color:var(--orange);}
+  .resumen-pago{
+    font-family:var(--font-body);
+    font-size:12.5px;
+    border-radius:8px;
+    padding:9px 12px;
+  }
+  .resumen-pago.ok{background:var(--green-bg);color:var(--green-text);}
+  .resumen-pago.falta{background:var(--amber-bg);color:var(--amber-text);}
+  .resumen-pago.sobra{background:var(--blue-bg);color:var(--blue-text);}
   .field label{font-size:12px;color:var(--text-muted);font-weight:500;}
   .field input,.field select{
     padding:8px 10px;
@@ -1243,22 +1316,20 @@
     <h2>Registrar pago</h2>
     <div class="formgrid">
       <div class="field full">
-        <label>Factura</label>
-        <select id="p_factura"></select>
-      </div>
-      <div id="p_saldo_favor_info"></div>
-      <div class="field">
-        <label>Monto del pago ($)</label>
-        <input type="number" id="p_monto" min="0" step="0.01">
-      </div>
-      <div class="field">
-        <label>Fecha del pago</label>
-        <input type="date" id="p_fecha">
+        <label>Cliente</label>
+        <input type="text" id="p_cliente_select" list="listaClientes" placeholder="Elegí el cliente">
       </div>
       <div class="field full">
-        <label>Nota (opcional)</label>
-        <input type="text" id="p_nota" placeholder="Ej: seña, transferencia parcial...">
+        <label>Facturas a saldar</label>
+        <div id="p_facturas_checklist"></div>
       </div>
+      <div id="p_saldo_favor_info" class="field full"></div>
+      <div class="field full">
+        <label>Pagos / cheques recibidos</label>
+        <div id="p_items_container"></div>
+        <button type="button" class="ghost" id="btnAgregarPagoItem" style="margin-top:6px;">+ Agregar otro pago o cheque</button>
+      </div>
+      <div id="p_resumen_pago" class="field full"></div>
     </div>
     <div class="formactions">
       <button class="ghost" id="btnCancelarPago">Cancelar</button>
@@ -1380,6 +1451,7 @@
       <span><span class="legend-dot" style="background:#E1EDEF;border:1px solid #2B6E7E;"></span>⛔ Vencimiento normal</span>
       <span><span class="legend-dot" style="background:#E1F1E7;border:1px solid #2F8557;"></span>⛔ Pagado</span>
       <span><span class="legend-dot" style="background:#E1F1E7;border:1px solid #2F8557;"></span>💰 Pago recibido</span>
+      <span><span class="legend-dot" style="background:#E1F1E7;border:1px solid #2F8557;"></span>🏦 Cheque (aparece en la fecha de depósito)</span>
     </div>
   </div>
 
@@ -1635,7 +1707,6 @@ let busqueda = '';
 let filtroFechaDesde = '';
 let filtroFechaHasta = '';
 let editandoId = null;
-let usandoSaldoFavor = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -2083,112 +2154,256 @@ function refreshTodasLasVistas() {
   if ($('viewProductos').style.display !== 'none') renderProductos();
 }
 
+let pagoFacturaPreseleccion = null;
+let pagoItemsForm = [];
+
 function abrirFormularioPago(preseleccionarId) {
   cerrarFormulario();
-  usandoSaldoFavor = false;
-  const pendientes = ventas
-    .filter(v => v.estado !== 'pagado')
-    .slice()
-    .sort((a,b) => parseFecha(a.fecha_vencimiento) - parseFecha(b.fecha_vencimiento));
 
-  if (pendientes.length === 0) {
+  const hayPendientes = ventas.some(v => v.estado !== 'pagado');
+  if (!hayPendientes) {
     mostrarAviso('No hay facturas pendientes de cobro para registrar un pago.', 'error');
     return;
   }
 
-  $('p_factura').innerHTML = pendientes.map(v => `
-    <option value="${v.id}">${escapeHtml(v.cliente)} — Fact. ${escapeHtml(v.factura)} — saldo ${formatMonto(saldoPendiente(v))}</option>
-  `).join('');
+  pagoFacturaPreseleccion = preseleccionarId || null;
+  let clienteInicial = '';
+  if (preseleccionarId) {
+    const v = ventas.find(x => x.id === preseleccionarId);
+    if (v) clienteInicial = v.cliente;
+  }
+  $('p_cliente_select').value = clienteInicial;
 
-  if (preseleccionarId) $('p_factura').value = preseleccionarId;
-  $('p_fecha').value = toISODate(new Date());
-  $('p_nota').value = '';
-  actualizarMontoSugerido();
+  pagoItemsForm = [{monto: '', fecha: toISODate(new Date()), esCheque: false, fecha_cobro: ''}];
+  renderPagoItems();
+  renderFacturasClientePago();
+
   $('pagoPanel').classList.add('open');
   $('pagoPanel').scrollIntoView({behavior:'smooth'});
 }
 
-function actualizarMontoSugerido() {
-  const v = ventas.find(x => x.id === $('p_factura').value);
-  if (v) $('p_monto').value = saldoPendiente(v).toFixed(2);
-  mostrarSaldoFavorInfo();
+function cerrarFormularioPago() {
+  $('pagoPanel').classList.remove('open');
+  pagoFacturaPreseleccion = null;
 }
 
-function mostrarSaldoFavorInfo() {
-  const v = ventas.find(x => x.id === $('p_factura').value);
-  if (!v) { $('p_saldo_favor_info').innerHTML = ''; return; }
-  const c = clientes.find(x => x.nombre.trim().toLowerCase() === v.cliente.trim().toLowerCase());
+function renderFacturasClientePago() {
+  const nombre = $('p_cliente_select').value.trim();
+  if (!nombre) {
+    $('p_facturas_checklist').innerHTML = `<div class="pedidos-pendientes-vacio">Elegí un cliente para ver sus facturas pendientes.</div>`;
+    $('p_saldo_favor_info').innerHTML = '';
+    actualizarResumenPago();
+    return;
+  }
+  const facturas = ventas
+    .filter(v => v.estado !== 'pagado' && v.cliente.trim().toLowerCase() === nombre.toLowerCase())
+    .sort((a,b) => parseFecha(a.fecha_vencimiento) - parseFecha(b.fecha_vencimiento));
+
+  if (facturas.length === 0) {
+    $('p_facturas_checklist').innerHTML = `<div class="pedidos-pendientes-vacio">Este cliente no tiene facturas pendientes de cobro.</div>`;
+  } else {
+    $('p_facturas_checklist').innerHTML = `<div class="facturas-checklist">${facturas.map(v => `
+      <label class="factura-check-row">
+        <input type="checkbox" value="${v.id}" ${v.id === pagoFacturaPreseleccion ? 'checked' : ''} onchange="actualizarResumenPago()">
+        <span>Fact. ${escapeHtml(v.factura)} — vence ${formatFecha(v.fecha_vencimiento)} — saldo ${formatMonto(saldoPendiente(v))}</span>
+      </label>`).join('')}</div>`;
+  }
+
+  const c = clientes.find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
   const saldoFavor = c && c.saldo_favor ? c.saldo_favor : 0;
-  if (saldoFavor <= 0) { $('p_saldo_favor_info').innerHTML = ''; return; }
-  const aplicar = Math.min(saldoFavor, saldoPendiente(v));
-  $('p_saldo_favor_info').innerHTML = `
-    <div class="saldo-favor-info">
-      <span>💰 ${escapeHtml(v.cliente)} tiene ${formatMonto(saldoFavor)} de saldo a favor</span>
-      <button type="button" onclick="usarSaldoFavorEnPago()">Usar ${formatMonto(aplicar)}</button>
-    </div>`;
+  if (saldoFavor > 0) {
+    $('p_saldo_favor_info').innerHTML = `
+      <div class="saldo-favor-info">
+        <span>💰 ${escapeHtml(nombre)} tiene ${formatMonto(saldoFavor)} de saldo a favor</span>
+        <button type="button" onclick="usarSaldoFavorEnPago()">Usar como pago</button>
+      </div>`;
+  } else {
+    $('p_saldo_favor_info').innerHTML = '';
+  }
+
+  actualizarResumenPago();
+}
+
+function renderPagoItems() {
+  $('p_items_container').innerHTML = pagoItemsForm.map((item, idx) => `
+    <div class="pago-item-row">
+      <input type="number" placeholder="Monto" min="0" step="0.01" value="${item.monto}" oninput="actualizarPagoItem(${idx},'monto',this.value)">
+      <input type="date" value="${item.fecha}" onchange="actualizarPagoItem(${idx},'fecha',this.value)" title="Fecha en que se recibe">
+      <label class="pago-item-cheque-toggle ${item.esCheque ? 'activo' : ''}">
+        <input type="checkbox" ${item.esCheque ? 'checked' : ''} onchange="actualizarPagoItem(${idx},'esCheque',this.checked)">
+        Es cheque diferido
+      </label>
+      ${item.esCheque ? `<input type="date" class="pago-item-deposito" value="${item.fecha_cobro}" onchange="actualizarPagoItem(${idx},'fecha_cobro',this.value)" title="Fecha de depósito">` : ''}
+      ${pagoItemsForm.length > 1 ? `<button type="button" class="pago-item-del" onclick="eliminarPagoItem(${idx})" title="Quitar">✕</button>` : ''}
+    </div>`).join('');
+  actualizarResumenPago();
+}
+
+function actualizarPagoItem(idx, campo, valor) {
+  if (!pagoItemsForm[idx]) return;
+  pagoItemsForm[idx][campo] = valor;
+  if (campo === 'esCheque') renderPagoItems();
+  else actualizarResumenPago();
+}
+
+function agregarPagoItem() {
+  pagoItemsForm.push({monto: '', fecha: toISODate(new Date()), esCheque: false, fecha_cobro: ''});
+  renderPagoItems();
+}
+
+function eliminarPagoItem(idx) {
+  pagoItemsForm.splice(idx, 1);
+  if (pagoItemsForm.length === 0) pagoItemsForm.push({monto: '', fecha: toISODate(new Date()), esCheque: false, fecha_cobro: ''});
+  renderPagoItems();
 }
 
 function usarSaldoFavorEnPago() {
-  const v = ventas.find(x => x.id === $('p_factura').value);
-  if (!v) return;
-  const c = clientes.find(x => x.nombre.trim().toLowerCase() === v.cliente.trim().toLowerCase());
+  const nombre = $('p_cliente_select').value.trim();
+  const c = clientes.find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
   const saldoFavor = c && c.saldo_favor ? c.saldo_favor : 0;
-  const aplicar = Math.min(saldoFavor, saldoPendiente(v));
-  $('p_monto').value = aplicar.toFixed(2);
-  $('p_nota').value = (($('p_nota').value || '').trim() + ' Pagado con saldo a favor.').trim();
-  usandoSaldoFavor = true;
+  if (saldoFavor <= 0) return;
+  pagoItemsForm.push({monto: saldoFavor.toFixed(2), fecha: toISODate(new Date()), esCheque: false, fecha_cobro: '', origenSaldoFavor: true});
+  renderPagoItems();
 }
 
-function cerrarFormularioPago() {
-  $('pagoPanel').classList.remove('open');
-  usandoSaldoFavor = false;
+function totalFacturasSeleccionadasPago() {
+  const ids = Array.from(document.querySelectorAll('#p_facturas_checklist input[type=checkbox]:checked')).map(el => el.value);
+  return ids.reduce((s,id) => {
+    const v = ventas.find(x => x.id === id);
+    return v ? s + saldoPendiente(v) : s;
+  }, 0);
+}
+
+function totalItemsPago() {
+  return pagoItemsForm.reduce((s,it) => {
+    const m = parseFloat(it.monto);
+    return s + (isNaN(m) ? 0 : m);
+  }, 0);
+}
+
+function actualizarResumenPago() {
+  const totalFacturas = totalFacturasSeleccionadasPago();
+  const totalItems = totalItemsPago();
+  const diff = Math.round((totalItems - totalFacturas) * 100) / 100;
+
+  if (totalFacturas === 0 && totalItems === 0) {
+    $('p_resumen_pago').innerHTML = '';
+    return;
+  }
+  let clase, texto;
+  if (Math.abs(diff) < 0.01) {
+    clase = 'ok';
+    texto = `Coincide justo: ${formatMonto(totalItems)} para ${formatMonto(totalFacturas)} de facturas seleccionadas.`;
+  } else if (diff > 0) {
+    clase = 'sobra';
+    texto = `Ingresaste ${formatMonto(diff)} de más — se va a guardar como saldo a favor del cliente.`;
+  } else {
+    clase = 'falta';
+    texto = `Faltan ${formatMonto(Math.abs(diff))} para cubrir todo lo seleccionado — las facturas más nuevas van a quedar con saldo pendiente.`;
+  }
+  $('p_resumen_pago').innerHTML = `<div class="resumen-pago ${clase}">${texto}</div>`;
 }
 
 async function guardarPago() {
-  const v = ventas.find(x => x.id === $('p_factura').value);
-  if (!v) {
-    mostrarAviso('Elegí una factura.', 'error');
+  const nombre = $('p_cliente_select').value.trim();
+  if (!nombre) {
+    mostrarAviso('Elegí un cliente.', 'error');
     return;
   }
-  const montoIngresado = parseFloat($('p_monto').value);
-  const fecha = $('p_fecha').value;
-  if (isNaN(montoIngresado) || montoIngresado <= 0 || !fecha) {
-    mostrarAviso('Completá un monto válido y la fecha del pago.', 'error');
-    return;
-  }
-  const saldo = saldoPendiente(v);
-  let montoParaFactura = montoIngresado;
-  let excedente = 0;
 
-  if (montoIngresado > saldo + 0.01) {
-    const ok = await confirmarAccion(`El pago ingresado (${formatMonto(montoIngresado)}) es mayor al saldo pendiente (${formatMonto(saldo)}). El excedente de ${formatMonto(montoIngresado - saldo)} se va a guardar como saldo a favor del cliente. ¿Continuar?`);
+  const idsSeleccionados = Array.from(document.querySelectorAll('#p_facturas_checklist input[type=checkbox]:checked')).map(el => el.value);
+  if (idsSeleccionados.length === 0) {
+    mostrarAviso('Marcá al menos una factura a saldar.', 'error');
+    return;
+  }
+  const facturasSeleccionadas = idsSeleccionados
+    .map(id => ventas.find(v => v.id === id))
+    .filter(Boolean)
+    .sort((a,b) => parseFecha(a.fecha_vencimiento) - parseFecha(b.fecha_vencimiento));
+
+  const chunks = [];
+  for (const item of pagoItemsForm) {
+    const monto = parseFloat(item.monto);
+    if (isNaN(monto) || monto <= 0) continue;
+    if (!item.fecha) {
+      mostrarAviso('Completá la fecha de cada pago o cheque.', 'error');
+      return;
+    }
+    if (item.esCheque && !item.fecha_cobro) {
+      mostrarAviso('Completá la fecha de depósito de cada cheque.', 'error');
+      return;
+    }
+    chunks.push({
+      monto,
+      fecha: item.fecha,
+      fecha_cobro: item.esCheque ? item.fecha_cobro : null,
+      origenSaldoFavor: !!item.origenSaldoFavor
+    });
+  }
+  if (chunks.length === 0) {
+    mostrarAviso('Cargá al menos un monto de pago.', 'error');
+    return;
+  }
+
+  const totalChunks = chunks.reduce((s,c) => s + c.monto, 0);
+  const totalFacturas = facturasSeleccionadas.reduce((s,v) => s + saldoPendiente(v), 0);
+  const diff = Math.round((totalChunks - totalFacturas) * 100) / 100;
+
+  if (Math.abs(diff) > 0.01) {
+    const msg = diff > 0
+      ? `El total ingresado (${formatMonto(totalChunks)}) es ${formatMonto(diff)} mayor a la suma de saldos seleccionados (${formatMonto(totalFacturas)}). La diferencia va a quedar como saldo a favor de ${nombre}. ¿Continuar?`
+      : `El total ingresado (${formatMonto(totalChunks)}) es ${formatMonto(Math.abs(diff))} menor a la suma de saldos seleccionados (${formatMonto(totalFacturas)}). Las facturas más nuevas van a quedar con saldo pendiente. ¿Continuar?`;
+    const ok = await confirmarAccion(msg);
     if (!ok) return;
-    montoParaFactura = saldo;
-    excedente = Math.round((montoIngresado - saldo) * 100) / 100;
   }
 
-  if (!v.pagos) v.pagos = [];
-  v.pagos.push({monto: montoParaFactura, fecha, nota: $('p_nota').value.trim()});
+  let chunkIdx = 0;
+  let restanteChunk = chunks[0].monto;
+  let usadoDeSaldoFavor = 0;
 
-  const pagadoTotal = montoPagado(v);
-  if (pagadoTotal >= Number(v.monto) - 0.01) {
-    v.estado = 'pagado';
-    v.fecha_pago = fecha;
-  } else {
-    v.estado = 'parcial';
+  for (const v of facturasSeleccionadas) {
+    let saldoFactura = saldoPendiente(v);
+    while (saldoFactura > 0.01 && chunkIdx < chunks.length) {
+      const aplicar = Math.min(saldoFactura, restanteChunk);
+      if (aplicar > 0.001) {
+        if (!v.pagos) v.pagos = [];
+        const chunk = chunks[chunkIdx];
+        v.pagos.push({
+          monto: Math.round(aplicar * 100) / 100,
+          fecha: chunk.fecha,
+          fecha_cobro: chunk.fecha_cobro || null,
+          nota: chunk.fecha_cobro ? `Cheque, se deposita el ${formatFecha(chunk.fecha_cobro)}` : (chunk.origenSaldoFavor ? 'Pagado con saldo a favor' : '')
+        });
+        saldoFactura -= aplicar;
+        restanteChunk = Math.round((restanteChunk - aplicar) * 100) / 100;
+        if (chunk.origenSaldoFavor) usadoDeSaldoFavor += aplicar;
+      }
+      if (restanteChunk <= 0.01) {
+        chunkIdx++;
+        restanteChunk = chunks[chunkIdx] ? chunks[chunkIdx].monto : 0;
+      }
+    }
+    const pagadoTotal = montoPagado(v);
+    if (pagadoTotal >= Number(v.monto) - 0.01) {
+      v.estado = 'pagado';
+      v.fecha_pago = toISODate(new Date());
+    } else if (pagadoTotal > 0) {
+      v.estado = 'parcial';
+    }
   }
 
   await guardarEnStorage();
 
-  if (usandoSaldoFavor && montoParaFactura > 0) {
-    await ajustarSaldoFavor(v.cliente, -montoParaFactura, `Usado para pagar factura ${v.factura}`, fecha);
-  }
-  if (excedente > 0) {
-    await ajustarSaldoFavor(v.cliente, excedente, `Excedente de pago en factura ${v.factura}`, fecha);
-    mostrarAviso(`💰 Se guardaron ${formatMonto(excedente)} como saldo a favor de ${v.cliente}.`, null, true);
+  if (usadoDeSaldoFavor > 0.01) {
+    await ajustarSaldoFavor(nombre, -usadoDeSaldoFavor, 'Usado como pago de factura(s)', toISODate(new Date()));
   }
 
-  usandoSaldoFavor = false;
+  const excedente = Math.round((restanteChunk + chunks.slice(chunkIdx + 1).reduce((s,c) => s + c.monto, 0)) * 100) / 100;
+  if (excedente > 0.01) {
+    await ajustarSaldoFavor(nombre, excedente, 'Excedente de pago múltiple', toISODate(new Date()));
+    mostrarAviso(`💰 Se guardaron ${formatMonto(excedente)} como saldo a favor de ${nombre}.`, null, true);
+  }
+
   cerrarFormularioPago();
   refreshTodasLasVistas();
 }
@@ -2198,8 +2413,8 @@ $('btnAgregarItemProducto').addEventListener('click', agregarItemProducto);
 $('btnNuevoPago').addEventListener('click', () => abrirFormularioPago());
 $('btnCancelarPago').addEventListener('click', cerrarFormularioPago);
 $('btnGuardarPago').addEventListener('click', guardarPago);
-$('p_factura').addEventListener('change', actualizarMontoSugerido);
-$('p_monto').addEventListener('input', () => { usandoSaldoFavor = false; });
+$('p_cliente_select').addEventListener('input', renderFacturasClientePago);
+$('btnAgregarPagoItem').addEventListener('click', agregarPagoItem);
 $('f_cliente').addEventListener('input', aplicarModalidadPagoCliente);
 $('btnCancelar').addEventListener('click', cerrarFormulario);
 $('btnGuardar').addEventListener('click', guardarVenta);
@@ -2256,7 +2471,7 @@ function metricasPeriodo(desde, hasta) {
   let cobrado = 0;
   ventas.forEach(v => {
     (v.pagos || []).forEach(p => {
-      if (enRango(p.fecha, desde, hasta)) cobrado += Number(p.monto);
+      if (enRango(p.fecha_cobro || p.fecha, desde, hasta)) cobrado += Number(p.monto);
     });
   });
   return {vendido, cobrado, cantidadVendidas: vendidas.length};
@@ -2498,8 +2713,9 @@ function renderCalendario() {
     if (!eventosPorDia[v.fecha_vencimiento]) eventosPorDia[v.fecha_vencimiento] = [];
     eventosPorDia[v.fecha_vencimiento].push({tipo: 'vencimiento', venta: v});
     (v.pagos || []).forEach(p => {
-      if (!eventosPorDia[p.fecha]) eventosPorDia[p.fecha] = [];
-      eventosPorDia[p.fecha].push({tipo: 'pago', venta: v, pago: p});
+      const fechaEvento = p.fecha_cobro || p.fecha;
+      if (!eventosPorDia[fechaEvento]) eventosPorDia[fechaEvento] = [];
+      eventosPorDia[fechaEvento].push({tipo: 'pago', venta: v, pago: p});
     });
   });
 
@@ -2528,8 +2744,12 @@ function celdaCalendarioHTML(date, eventosPorDia, otroMes) {
 
   let eventosHTML = eventos.slice(0, maxMostrar).map(ev => {
     if (ev.tipo === 'pago') {
-      const titulo = `Pago de ${ev.venta.cliente} · ${formatMonto(ev.pago.monto)} · Fact. ${ev.venta.factura}`;
-      return `<div class="cal-evento pago" title="${escapeHtml(titulo)}">💰 ${escapeHtml(ev.venta.cliente)}</div>`;
+      const esCheque = !!ev.pago.fecha_cobro;
+      const icono = esCheque ? '🏦' : '💰';
+      const titulo = esCheque
+        ? `Cheque de ${ev.venta.cliente} · ${formatMonto(ev.pago.monto)} · Fact. ${ev.venta.factura} · recibido ${formatFecha(ev.pago.fecha)}, se deposita hoy`
+        : `Pago de ${ev.venta.cliente} · ${formatMonto(ev.pago.monto)} · Fact. ${ev.venta.factura}`;
+      return `<div class="cal-evento pago" title="${escapeHtml(titulo)}">${icono} ${escapeHtml(ev.venta.cliente)}</div>`;
     }
     const cls = ev.venta.estado === 'pagado' ? 'pagado' : estadoDe(ev.venta);
     const titulo = `Vencimiento de ${ev.venta.cliente} · ${formatMonto(ev.venta.monto)} · Fact. ${ev.venta.factura}`;
