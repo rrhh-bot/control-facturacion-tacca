@@ -687,6 +687,53 @@
     width:140px;
     background:#fff;
   }
+  .pedidos-pendientes-block{
+    margin-top:1.25rem;
+    padding-top:1.1rem;
+    border-top:1px dashed var(--hairline);
+  }
+  .pedido-pendiente-form{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+  .pedido-pendiente-form input{
+    padding:8px 10px;
+    border:1px solid var(--hairline);
+    border-radius:6px;
+    font-family:var(--font-body);
+    font-size:13px;
+    background:#fff;
+  }
+  .pedido-pendiente-form input[type=text]{flex:1;min-width:140px;}
+  .pedido-pendiente-form input[type=number]{width:150px;font-family:var(--font-mono);}
+  .pedido-pendiente-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    background:var(--amber-bg);
+    border-radius:8px;
+    padding:8px 12px;
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .pedido-pendiente-info{color:var(--amber-text);}
+  .pedido-pendiente-info b{font-family:var(--font-mono);}
+  .pedido-pendiente-del{
+    background:transparent;
+    border:none;
+    color:var(--amber-text);
+    cursor:pointer;
+    font-size:12px;
+    padding:4px 8px;
+    border-radius:5px;
+    white-space:nowrap;
+    font-weight:600;
+  }
+  .pedido-pendiente-del:hover{background:rgba(0,0,0,.06);}
+  .pedidos-pendientes-vacio{font-size:12.5px;color:var(--text-muted);font-style:italic;}
   .metric-delta{
     font-size:12px;
     font-weight:600;
@@ -1257,6 +1304,18 @@
         </div>
       </div>
       <div class="stats" id="gestionStats"></div>
+
+      <div class="pedidos-pendientes-block">
+        <div class="chart-title" style="font-size:14px;margin-top:1.25rem;">Pedidos pendientes de facturar</div>
+        <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-2px 0 10px;">Pedidos ya confirmados que todavía no se facturaron. Se suman a la proyección del mes; cuando factures uno, quitalo de acá.</p>
+        <div class="pedido-pendiente-form">
+          <input type="text" id="pp_cliente" placeholder="Cliente (opcional)">
+          <input type="number" id="pp_cantidad" placeholder="Cantidad (ítems)" min="0" step="1">
+          <input type="text" id="pp_nota" placeholder="Nota (opcional)">
+          <button class="ghost" id="btnAgregarPedidoPendiente">+ Agregar</button>
+        </div>
+        <div id="pedidosPendientesList"></div>
+      </div>
     </div>
 
     <div class="client-card">
@@ -1856,6 +1915,7 @@ function aplicarModalidadPagoCliente() {
   if (!cliente) return;
   if (cliente.condicion_habitual) $('f_condicion').value = cliente.condicion_habitual;
   if (cliente.metodo_habitual) $('f_metodo').value = cliente.metodo_habitual;
+  if (cliente.notas && !$('f_notas').value.trim()) $('f_notas').value = cliente.notas;
 }
 
 let itemsProductosForm = [];
@@ -2403,6 +2463,7 @@ $('evolucionRango').addEventListener('click', (e) => {
 });
 
 $('btnGuardarObjetivo').addEventListener('click', guardarObjetivoMensual);
+$('btnAgregarPedidoPendiente').addEventListener('click', agregarPedidoPendiente);
 
 $('btnAplicarRango').addEventListener('click', () => {
   const desdeVal = $('r_desde').value;
@@ -2618,7 +2679,9 @@ function exportarBackup() {
     generado: toISODate(new Date()),
     ventas: ventas,
     clientes: clientes,
-    productos: productos
+    productos: productos,
+    pedidos_pendientes: pedidosPendientes,
+    objetivo_mensual_items: objetivoMensual
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2648,7 +2711,8 @@ function importarBackup(file) {
     }
     const listaClientes = Array.isArray(data.clientes) ? data.clientes : [];
     const listaProductos = Array.isArray(data.productos) ? data.productos : [];
-    const ok = await confirmarAccion(`Este archivo tiene ${lista.length} venta(s), ${listaClientes.length} cliente(s) y ${listaProductos.length} producto(s). Esto va a REEMPLAZAR todos los datos actuales de la app. ¿Continuar?`);
+    const listaPedidosPendientes = Array.isArray(data.pedidos_pendientes) ? data.pedidos_pendientes : [];
+    const ok = await confirmarAccion(`Este archivo tiene ${lista.length} venta(s), ${listaClientes.length} cliente(s), ${listaProductos.length} producto(s) y ${listaPedidosPendientes.length} pedido(s) pendiente(s). Esto va a REEMPLAZAR todos los datos actuales de la app. ¿Continuar?`);
     if (!ok) return;
     ventas = lista;
     ventas.forEach(v => {
@@ -2666,9 +2730,15 @@ function importarBackup(file) {
       if (!c.movimientos_saldo) c.movimientos_saldo = [];
     });
     productos = listaProductos;
+    pedidosPendientes = listaPedidosPendientes;
+    if (data.objetivo_mensual_items != null) objetivoMensual = Number(data.objetivo_mensual_items) || 0;
     await guardarEnStorage();
     await guardarClientesEnStorage();
     await guardarProductosEnStorage();
+    await guardarPedidosPendientesEnStorage();
+    if (data.objetivo_mensual_items != null) {
+      try { await window.storage.set('objetivo_mensual_items', String(objetivoMensual), false); } catch (e) { /* noop */ }
+    }
     refreshTodasLasVistas();
     mostrarAviso('Backup importado correctamente.', null, true);
   };
@@ -2895,6 +2965,70 @@ async function guardarObjetivoMensual() {
   renderGestionVentas();
 }
 
+let pedidosPendientes = [];
+
+async function cargarPedidosPendientes() {
+  try {
+    const result = await window.storage.get('pedidos_pendientes', false);
+    pedidosPendientes = result ? JSON.parse(result.value) : [];
+  } catch (e) {
+    pedidosPendientes = [];
+  }
+}
+
+async function guardarPedidosPendientesEnStorage() {
+  try {
+    await window.storage.set('pedidos_pendientes', JSON.stringify(pedidosPendientes), false);
+  } catch (e) {
+    mostrarAviso('No se pudo guardar el pedido pendiente. Probá de nuevo.', 'error');
+  }
+}
+
+function totalItemsPedidosPendientes() {
+  return pedidosPendientes.reduce((s,p) => s + (p.cantidad != null && !isNaN(p.cantidad) ? Number(p.cantidad) : 0), 0);
+}
+
+async function agregarPedidoPendiente() {
+  const cantidad = parseFloat($('pp_cantidad').value);
+  if (isNaN(cantidad) || cantidad <= 0) {
+    mostrarAviso('Ingresá una cantidad de ítems válida para el pedido.', 'error');
+    return;
+  }
+  pedidosPendientes.push({
+    id: 'pp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    cliente: $('pp_cliente').value.trim(),
+    cantidad,
+    nota: $('pp_nota').value.trim(),
+    fecha: toISODate(new Date())
+  });
+  await guardarPedidosPendientesEnStorage();
+  $('pp_cliente').value = '';
+  $('pp_cantidad').value = '';
+  $('pp_nota').value = '';
+  renderGestionVentas();
+}
+
+async function eliminarPedidoPendiente(id) {
+  pedidosPendientes = pedidosPendientes.filter(p => p.id !== id);
+  await guardarPedidosPendientesEnStorage();
+  renderGestionVentas();
+}
+
+function renderPedidosPendientesList() {
+  if (pedidosPendientes.length === 0) {
+    $('pedidosPendientesList').innerHTML = `<div class="pedidos-pendientes-vacio">No hay pedidos pendientes de facturar cargados.</div>`;
+    return;
+  }
+  $('pedidosPendientesList').innerHTML = pedidosPendientes.map(p => `
+    <div class="pedido-pendiente-item">
+      <span class="pedido-pendiente-info">
+        <b>${p.cantidad}</b> ítems${p.cliente ? ' — ' + escapeHtml(p.cliente) : ''}${p.nota ? ' · ' + escapeHtml(p.nota) : ''}
+        <span style="opacity:.7;"> (cargado ${formatFecha(p.fecha)})</span>
+      </span>
+      <button class="pedido-pendiente-del" onclick="eliminarPedidoPendiente('${p.id}')">Ya facturado — quitar ✕</button>
+    </div>`).join('');
+}
+
 function calcularGestionVentasMes() {
   const t = hoy();
   const desde = new Date(t.getFullYear(), t.getMonth(), 1);
@@ -2914,17 +3048,19 @@ function renderGestionVentas() {
   }
 
   const {pedidos, itemsVendidos} = calcularGestionVentasMes();
-  const diferencia = Math.round(itemsVendidos - objetivoMensual);
+  const itemsPendientes = totalItemsPedidosPendientes();
+  const proyeccion = itemsVendidos + itemsPendientes;
+  const diferencia = Math.round(proyeccion - objetivoMensual);
 
   let diferenciaHTML, claseStat;
   if (!objetivoMensual) {
     diferenciaHTML = '<div class="value">—</div><div class="sub">Cargá un objetivo para comparar</div>';
     claseStat = '';
   } else if (diferencia >= 0) {
-    diferenciaHTML = `<div class="value">+${diferencia}</div><div class="sub">por encima del objetivo</div>`;
+    diferenciaHTML = `<div class="value">+${diferencia}</div><div class="sub">por encima del objetivo (proyectado)</div>`;
     claseStat = 'green';
   } else {
-    diferenciaHTML = `<div class="value">${diferencia}</div><div class="sub">por debajo del objetivo</div>`;
+    diferenciaHTML = `<div class="value">${diferencia}</div><div class="sub">por debajo del objetivo (proyectado)</div>`;
     claseStat = 'orange';
   }
 
@@ -2938,11 +3074,19 @@ function renderGestionVentas() {
       <div class="value">${itemsVendidos}</div>
       <div class="sub">${objetivoMensual ? 'objetivo: ' + objetivoMensual : 'sin objetivo cargado'}</div>
     </div>
+    <div class="stat amber">
+      <div class="label">Pedidos pendientes de facturar</div>
+      <div class="value">${itemsPendientes}</div>
+      <div class="sub">${pedidosPendientes.length} pedido${pedidosPendientes.length===1?'':'s'} cargado${pedidosPendientes.length===1?'':'s'}</div>
+    </div>
     <div class="stat ${claseStat}">
-      <div class="label">Diferencia vs. objetivo</div>
+      <div class="label">Proyección vs. objetivo</div>
       ${diferenciaHTML}
+      <div class="sub" style="margin-top:2px;">${itemsVendidos} facturados + ${itemsPendientes} pendientes</div>
     </div>
   `;
+
+  renderPedidosPendientesList();
 }
 
 function historicoCantidadPorCliente() {
@@ -3424,6 +3568,7 @@ $('buscadorProductos').addEventListener('input', renderProductos);
   await cargarClientes();
   await cargarProductos();
   await cargarObjetivoMensual();
+  await cargarPedidosPendientes();
 })();
 </script>
 <div id="printArea"></div>
