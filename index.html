@@ -1021,6 +1021,37 @@
   .print-table td.vencida{color:#C7431E;font-weight:700;}
   .print-total{margin-top:14px;font-family:var(--font-body);font-size:13px;font-weight:700;text-align:right;}
 
+  .deudor-cliente-group{
+    margin-bottom:12px;
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .deudor-cliente-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-left:5px solid var(--orange);
+    border-radius:8px;
+    padding:13px 16px;
+    cursor:pointer;
+  }
+  .deudor-cliente-header:hover{background:#F7F4EF;}
+  .deudor-cliente-titulo{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+  .deudor-cliente-arrow{
+    color:var(--text-muted);
+    font-size:12px;
+    width:12px;
+    display:inline-block;
+  }
+  .deudor-cliente-resumen{display:flex;gap:12px;align-items:center;}
+  .deudor-cliente-resumen .monto{font-family:var(--font-mono);font-weight:700;font-size:15px;}
+  .deudor-cliente-facturas{
+    padding:12px 0 0 22px;
+  }
   .deudor-card{
     background:var(--card);
     border:1px solid var(--hairline);
@@ -3111,6 +3142,9 @@ $('calPrev').addEventListener('click', () => { calDate.setMonth(calDate.getMonth
 $('calNext').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendario(); });
 $('calHoy').addEventListener('click', () => { calDate = new Date(); calDate.setDate(1); renderCalendario(); });
 
+let deudoresExpandido = new Set();
+let deudoresClientesActuales = [];
+
 function renderDeudores() {
   const vencidas = ventas
     .filter(v => v.estado !== 'pagado' && diasHasta(v.fecha_vencimiento) < 0)
@@ -3133,6 +3167,7 @@ function renderDeudores() {
   `;
 
   if (vencidas.length === 0) {
+    deudoresClientesActuales = [];
     $('deudoresList').innerHTML = `
       <div class="empty">
         <h3>No tenés facturas vencidas sin cobrar 🎉</h3>
@@ -3142,14 +3177,62 @@ function renderDeudores() {
   }
 
   const mapMorosidad = calcularMorosidad();
-  $('deudoresList').innerHTML = vencidas.map(v => deudorCardHTML(v, mapMorosidad)).join('');
+
+  const grupos = {};
+  vencidas.forEach(v => {
+    if (!grupos[v.cliente]) grupos[v.cliente] = [];
+    grupos[v.cliente].push(v);
+  });
+
+  const clientesOrdenados = Object.entries(grupos)
+    .map(([nombre, facturas]) => ({
+      nombre,
+      facturas,
+      totalSaldo: facturas.reduce((s,v) => s + saldoPendiente(v), 0),
+      maxDias: Math.max(...facturas.map(v => Math.abs(diasHasta(v.fecha_vencimiento))))
+    }))
+    .sort((a,b) => b.totalSaldo - a.totalSaldo);
+
+  deudoresClientesActuales = clientesOrdenados;
+  $('deudoresList').innerHTML = clientesOrdenados.map((g, idx) => deudorClienteGroupHTML(g, idx, mapMorosidad)).join('');
+}
+
+function deudorClienteGroupHTML(grupo, idx, mapMorosidad) {
+  const esReincidente = mapMorosidad && esClienteMoroso(grupo.nombre, mapMorosidad);
+  const abierto = deudoresExpandido.has(grupo.nombre);
+  const facturasHTML = grupo.facturas.map(v => deudorCardHTML(v, mapMorosidad)).join('');
+
+  return `
+    <div class="deudor-cliente-group">
+      <div class="deudor-cliente-header" onclick="toggleDeudorCliente(${idx})">
+        <div class="deudor-cliente-titulo">
+          <span class="deudor-cliente-arrow">${abierto ? '▾' : '▸'}</span>
+          <span class="cliente">${escapeHtml(grupo.nombre)}</span>
+          ${esReincidente ? '<span class="badge vencido" style="font-size:10.5px;">⚠️ reincidente</span>' : ''}
+        </div>
+        <div class="deudor-cliente-resumen">
+          <span class="badge vencido">${grupo.facturas.length} factura${grupo.facturas.length===1?'':'s'} vencida${grupo.facturas.length===1?'':'s'}</span>
+          <span class="monto">${formatMonto(grupo.totalSaldo)}</span>
+        </div>
+      </div>
+      <div class="deudor-cliente-facturas" id="deudorGrupo-${idx}" style="display:${abierto ? '' : 'none'};">
+        ${facturasHTML}
+      </div>
+    </div>`;
+}
+
+function toggleDeudorCliente(idx) {
+  const grupo = deudoresClientesActuales[idx];
+  if (!grupo) return;
+  if (deudoresExpandido.has(grupo.nombre)) deudoresExpandido.delete(grupo.nombre);
+  else deudoresExpandido.add(grupo.nombre);
+  renderDeudores();
 }
 
 function deudorCardHTML(v, mapMorosidad) {
   const dias = Math.abs(diasHasta(v.fecha_vencimiento));
   const saldo = saldoPendiente(v);
   const pagado = montoPagado(v);
-  const esReincidente = mapMorosidad && esClienteMoroso(v.cliente, mapMorosidad);
   const gestiones = (v.gestiones || []).slice().sort((a,b) => parseFecha(b.fecha) - parseFecha(a.fecha));
 
   const gestionesHTML = gestiones.length
@@ -3165,9 +3248,7 @@ function deudorCardHTML(v, mapMorosidad) {
     <div class="deudor-card">
       <div class="deudor-header">
         <div class="deudor-titulo">
-          <span class="cliente">${escapeHtml(v.cliente)}</span>
           <span class="factura">Fact. ${escapeHtml(v.factura)}</span>
-          ${esReincidente ? '<span class="badge vencido" style="font-size:10.5px;">⚠️ reincidente</span>' : ''}
         </div>
         <div class="deudor-monto-wrap">
           <span class="monto">${formatMonto(saldo)}</span>
