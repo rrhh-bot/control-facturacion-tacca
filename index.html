@@ -16,7 +16,7 @@
   (async () => {
     try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js");
-      const { getDatabase, ref, get: dbGet, set: dbSet, remove: dbRemove } = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js");
+      const { getDatabase, ref, get: dbGet, set: dbSet, remove: dbRemove, onValue } = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js");
 
       const firebaseConfig = {
         apiKey: "AIzaSyDjLEEl6O8StDHUVWwEMR0E5n4iCyUBIZY",
@@ -51,6 +51,15 @@
         },
         async list() {
           return {keys: []};
+        },
+        watch(key, onChange) {
+          try {
+            onValue(ref(db, 'data/' + claveSegura(key)), (snap) => {
+              onChange(snap.exists() ? snap.val() : null);
+            });
+          } catch (e) {
+            console.error('No se pudo escuchar cambios en vivo de ' + key, e);
+          }
         }
       };
     } catch (e) {
@@ -239,10 +248,12 @@
     gap:12px;
     margin-top:1.5rem;
     border-bottom:1px solid var(--hairline);
+    flex-wrap:wrap;
   }
   .tabs{
     display:flex;
     gap:0;
+    flex-wrap:wrap;
   }
   .tab{
     padding:10px 4px;
@@ -267,7 +278,7 @@
     align-self:center;
   }
   .tab-revision-btn:hover{background:var(--graphite-2);}
-  .tab-revision-btn.active{background:var(--orange);color:#fff;border-bottom:none;}
+  .tab-revision-btn.active{background:var(--graphite-2);color:#fff;border-bottom:none;box-shadow:0 0 0 2px rgba(255,255,255,.55) inset;}
 
   .datos-dropdown{position:relative;padding-bottom:8px;}
   .datos-btn{
@@ -368,6 +379,27 @@
     background:var(--card);
   }
   .chip-group{display:flex;gap:6px;flex-wrap:wrap;}
+  .rev-subnav{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin:1rem 0 1.5rem;
+    padding:10px 12px;
+    background:var(--blue-bg);
+    border-radius:10px;
+  }
+  .rev-subnav-link{
+    font-family:var(--font-body);
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--blue-text);
+    background:#fff;
+    padding:6px 12px;
+    border-radius:16px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .rev-subnav-link:hover{background:var(--blue);color:#fff;}
   .chip{
     font-family:var(--font-body);
     font-size:13px;
@@ -385,7 +417,7 @@
     border-color:var(--graphite);
   }
   button.primary{
-    background:var(--orange);
+    background:var(--graphite);
     color:#fff;
     border:none;
     padding:10px 18px;
@@ -395,7 +427,7 @@
     font-size:14px;
     cursor:pointer;
   }
-  button.primary:hover{background:#A9370F;}
+  button.primary:hover{background:var(--graphite-2);}
   button.primary.green{background:var(--green);}
   button.primary.green:hover{background:#256B45;}
   button.ghost{
@@ -432,6 +464,36 @@
   }
   .field{display:flex;flex-direction:column;gap:4px;}
   .field.full{grid-column:1/-1;}
+  .form-section-label{
+    grid-column:1/-1;
+    font-family:var(--font-display);
+    font-size:11.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--blue);
+    margin:.4rem 0 -.35rem;
+    padding-top:.6rem;
+    border-top:1px dashed var(--hairline);
+  }
+  .form-section-label:first-child{border-top:none;padding-top:0;margin-top:0;}
+  .paso-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:var(--graphite);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    margin-right:5px;
+  }
+  .campo-invalido{
+    border-color:var(--orange) !important;
+    background:var(--orange-bg) !important;
+  }
   #p_saldo_favor_info{grid-column:1/-1;}
   .saldo-favor-info{
     background:var(--green-bg);
@@ -1190,6 +1252,23 @@
     .row{grid-template-columns:1fr;}
     .row-side{align-items:flex-start;flex-direction:row;justify-content:space-between;width:100%;}
   }
+  @media (max-width:680px){
+    .tab{font-size:12.5px;margin-right:14px;padding:8px 2px;}
+    .tab-revision-btn{margin-left:0;margin-top:6px;}
+    .chart-card,.client-card{overflow-x:auto;}
+    .client-table{font-size:11.5px;}
+    .client-table th,.client-table td{padding:5px 6px;white-space:nowrap;}
+    .pago-item-row{padding:8px 6px;}
+    .pago-item-row input[type=number]{width:96px;}
+    .pago-item-row input[type=date]{width:120px;}
+    .factura-check-row{flex-wrap:wrap;}
+    .objetivo-input-group input{width:110px;}
+    .toolbar{gap:6px;}
+    .datos-dropdown{position:static;}
+    .dropdown-menu{left:0;right:0;width:auto;}
+    h1{font-size:21px;}
+    .cliente-stats,.producto-stats{width:100%;justify-content:space-between;}
+  }
 </style>
 </head>
 <body>
@@ -1258,6 +1337,7 @@
   <div class="formpanel" id="formPanel">
     <h2 id="formTitulo">Cargar nueva venta</h2>
     <div class="formgrid">
+      <div class="form-section-label">Datos de la factura</div>
       <div class="field">
         <label>Fecha de venta</label>
         <input type="date" id="f_fecha_venta">
@@ -1276,11 +1356,12 @@
         <input type="number" id="f_monto" placeholder="0" min="0" step="0.01">
       </div>
       <datalist id="listaProductos"></datalist>
+      <div class="form-section-label">Productos</div>
       <div class="field full">
-        <label>Productos de esta factura</label>
         <div id="itemsProductosContainer"></div>
         <button type="button" class="ghost" id="btnAgregarItemProducto" style="margin-top:6px;">+ Agregar producto</button>
       </div>
+      <div class="form-section-label">Condiciones de pago</div>
       <div class="field">
         <label>Condición de pago</label>
         <select id="f_condicion">
@@ -1316,16 +1397,16 @@
     <h2>Registrar pago</h2>
     <div class="formgrid">
       <div class="field full">
-        <label>Cliente</label>
+        <label><span class="paso-num">1</span> Cliente</label>
         <input type="text" id="p_cliente_select" list="listaClientes" placeholder="Elegí el cliente">
       </div>
       <div class="field full">
-        <label>Facturas a saldar</label>
+        <label><span class="paso-num">2</span> Facturas a saldar</label>
         <div id="p_facturas_checklist"></div>
       </div>
       <div id="p_saldo_favor_info" class="field full"></div>
       <div class="field full">
-        <label>Pagos / cheques recibidos</label>
+        <label><span class="paso-num">3</span> Pagos / cheques recibidos</label>
         <div id="p_items_container"></div>
         <button type="button" class="ghost" id="btnAgregarPagoItem" style="margin-top:6px;">+ Agregar otro pago o cheque</button>
       </div>
@@ -1363,7 +1444,15 @@
       <button class="ghost" id="btnExportarRevisionExcel">📊 Exportar a Excel (.csv)</button>
     </div>
 
-    <div class="chart-card">
+    <div class="rev-subnav" id="revSubnav">
+      <span class="rev-subnav-link" data-target="rev-objetivo">Objetivo del mes</span>
+      <span class="rev-subnav-link" data-target="rev-quien-venderle">A quién venderle más</span>
+      <span class="rev-subnav-link" data-target="rev-comparacion">Comparación de período</span>
+      <span class="rev-subnav-link" data-target="rev-evolucion">Evolución mensual</span>
+      <span class="rev-subnav-link" data-target="rev-por-cliente">Por cliente</span>
+    </div>
+
+    <div class="chart-card" id="rev-objetivo">
       <div class="chart-title">📦 Gestión de ventas y pedidos — <span id="gestionMesLabel"></span></div>
       <div class="objetivo-row">
         <div class="objetivo-input-group">
@@ -1389,7 +1478,7 @@
       </div>
     </div>
 
-    <div class="client-card">
+    <div class="client-card" id="rev-quien-venderle">
       <div class="chart-title">A quién venderle más</div>
       <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Ordenado de mayor a menor volumen. Usa el promedio real (por compra) cuando ya tenés cantidades cargadas para ese cliente; si todavía no hay datos reales, usa el promedio estimado por mes que cargaste en su ficha.</p>
       <table class="client-table">
@@ -1402,7 +1491,7 @@
 
     <div class="stats" id="revStats"></div>
 
-    <div class="chart-card">
+    <div class="chart-card" id="rev-comparacion">
       <div class="chart-title">Vendido y cobrado vs. período anterior</div>
       <svg id="revChart" viewBox="0 0 560 220" style="width:100%;height:auto;"></svg>
       <div class="chart-legend">
@@ -1411,7 +1500,7 @@
       </div>
     </div>
 
-    <div class="chart-card">
+    <div class="chart-card" id="rev-evolucion">
       <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <span>Evolución mensual</span>
         <div class="chip-group" id="evolucionRango">
@@ -1426,7 +1515,7 @@
       </div>
     </div>
 
-    <div class="client-card">
+    <div class="client-card" id="rev-por-cliente">
       <div class="chart-title">Por cliente (en el período)</div>
       <table class="client-table">
         <thead>
@@ -1974,6 +2063,23 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
+function marcarCampoRequerido(id) {
+  const el = $(id);
+  if (!el || el.dataset.validacionActiva) return;
+  el.dataset.validacionActiva = '1';
+  el.addEventListener('blur', () => {
+    if (!el.value || !el.value.toString().trim()) el.classList.add('campo-invalido');
+    else el.classList.remove('campo-invalido');
+  });
+  el.addEventListener('input', () => {
+    if (el.value && el.value.toString().trim()) el.classList.remove('campo-invalido');
+  });
+}
+
+function limpiarValidaciones() {
+  document.querySelectorAll('.campo-invalido').forEach(el => el.classList.remove('campo-invalido'));
+}
+
 function render() {
   renderStats();
   renderLedger();
@@ -2032,6 +2138,7 @@ function productosResumen(v) {
 function abrirFormulario() {
   editandoId = null;
   cerrarFormularioPago();
+  limpiarValidaciones();
   $('formTitulo').textContent = 'Cargar nueva venta';
   $('f_fecha_venta').value = toISODate(new Date());
   $('f_cliente').value = '';
@@ -2055,6 +2162,7 @@ function editarVenta(id) {
   const v = ventas.find(x => x.id === id);
   if (!v) return;
   cerrarFormularioPago();
+  limpiarValidaciones();
   editandoId = id;
   $('formTitulo').textContent = 'Editar venta';
   $('f_fecha_venta').value = v.fecha_venta;
@@ -2159,6 +2267,7 @@ let pagoItemsForm = [];
 
 function abrirFormularioPago(preseleccionarId) {
   cerrarFormulario();
+  limpiarValidaciones();
 
   const hayPendientes = ventas.some(v => v.estado !== 'pagado');
   if (!hayPendientes) {
@@ -2678,6 +2787,11 @@ $('evolucionRango').addEventListener('click', (e) => {
 });
 
 $('btnGuardarObjetivo').addEventListener('click', guardarObjetivoMensual);
+$('revSubnav').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('rev-subnav-link')) return;
+  const destino = $(e.target.dataset.target);
+  if (destino) destino.scrollIntoView({behavior:'smooth', block:'start'});
+});
 $('btnAgregarPedidoPendiente').addEventListener('click', agregarPedidoPendiente);
 
 $('btnAplicarRango').addEventListener('click', () => {
@@ -3551,6 +3665,7 @@ function renderClientes() {
 }
 
 function abrirFormularioCliente(id) {
+  limpiarValidaciones();
   editandoClienteId = id || null;
   if (id) {
     const c = clientes.find(x => x.id === id);
@@ -3723,6 +3838,7 @@ function renderProductos() {
 }
 
 function abrirFormularioProducto(id) {
+  limpiarValidaciones();
   editandoProductoId = id || null;
   if (id) {
     const p = productos.find(x => x.id === id);
@@ -3781,6 +3897,58 @@ $('btnCancelarProducto').addEventListener('click', cerrarFormularioProducto);
 $('btnGuardarProducto').addEventListener('click', guardarProducto);
 $('buscadorProductos').addEventListener('input', renderProductos);
 
+['f_cliente','f_factura','f_monto','f_fecha_venta','f_vencimiento'].forEach(marcarCampoRequerido);
+marcarCampoRequerido('p_cliente_select');
+marcarCampoRequerido('c_nombre');
+marcarCampoRequerido('pr_nombre');
+
+function activarSincronizacionEnVivo() {
+  if (!window.storage || typeof window.storage.watch !== 'function') return;
+
+  window.storage.watch('ventas', (value) => {
+    if (value == null) return;
+    try {
+      const nuevas = JSON.parse(value);
+      nuevas.forEach(v => {
+        if (!v.pagos) v.pagos = [];
+        if (!v.gestiones) v.gestiones = [];
+        if (!v.productos) v.productos = v.producto ? [{producto: v.producto, cantidad: v.cantidad != null ? v.cantidad : null}] : [];
+      });
+      ventas = nuevas;
+      refreshTodasLasVistas();
+    } catch (e) { /* dato inválido, se ignora este cambio */ }
+  });
+
+  window.storage.watch('clientes', (value) => {
+    if (value == null) return;
+    try {
+      const nuevos = JSON.parse(value);
+      nuevos.forEach(c => {
+        if (c.saldo_favor == null) c.saldo_favor = 0;
+        if (!c.movimientos_saldo) c.movimientos_saldo = [];
+      });
+      clientes = nuevos;
+      refreshTodasLasVistas();
+    } catch (e) { /* noop */ }
+  });
+
+  window.storage.watch('productos', (value) => {
+    if (value == null) return;
+    try { productos = JSON.parse(value); refreshTodasLasVistas(); } catch (e) { /* noop */ }
+  });
+
+  window.storage.watch('pedidos_pendientes', (value) => {
+    if (value == null) return;
+    try { pedidosPendientes = JSON.parse(value); refreshTodasLasVistas(); } catch (e) { /* noop */ }
+  });
+
+  window.storage.watch('objetivo_mensual_items', (value) => {
+    if (value == null) return;
+    objetivoMensual = Number(value) || 0;
+    refreshTodasLasVistas();
+  });
+}
+
 (async () => {
   await window.storageReady;
   await cargarNotificaciones();
@@ -3789,6 +3957,7 @@ $('buscadorProductos').addEventListener('input', renderProductos);
   await cargarProductos();
   await cargarObjetivoMensual();
   await cargarPedidosPendientes();
+  activarSincronizacionEnVivo();
 })();
 </script>
 <div id="printArea"></div>
