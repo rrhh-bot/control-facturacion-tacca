@@ -1112,6 +1112,62 @@
     font-style:italic;
     margin-top:8px;
   }
+  .bitacora-instruccion{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:19px;
+    color:var(--blue);
+    margin:1.5rem 0 0;
+  }
+  .bitacora-chips-vacio{
+    font-family:var(--font-body);
+    font-size:12.5px;
+    color:var(--text-muted);
+    font-style:italic;
+    margin:1rem 0 1.5rem;
+  }
+  .bitacora-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin:1rem 0 1.5rem;
+  }
+  .bitacora-chip{
+    font-family:var(--font-body);
+    font-size:13px;
+    font-weight:500;
+    padding:7px 14px;
+    border-radius:18px;
+    border:1px solid var(--hairline);
+    background:var(--card);
+    color:var(--text);
+    cursor:pointer;
+  }
+  .bitacora-chip:hover{background:#F0F2F1;}
+  .bitacora-chip.activo{background:var(--graphite);border-color:var(--graphite);color:#fff;}
+  .bitacora-chip-cambiar{
+    font-family:var(--font-body);
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--text-muted);
+    padding:7px 12px;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+  .bitacora-chip-cambiar:hover{color:var(--orange);}
+  .bitacora-chip.tiene-charlas{border-color:var(--blue);}
+  .bitacora-detalle-card{
+    background:var(--card);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    padding:1.1rem 1.25rem;
+  }
+  .bitacora-detalle-titulo{
+    font-family:var(--font-display);
+    font-size:17px;
+    font-weight:600;
+    margin-bottom:14px;
+  }
   .gestion-form{
     display:flex;
     gap:8px;
@@ -1329,6 +1385,7 @@
       <span class="tab active" data-tab="ventas">Ventas</span>
       <span class="tab" data-tab="calendario">Calendario</span>
       <span class="tab" data-tab="deudores">Bitácora de deudores</span>
+      <span class="tab" data-tab="bitacoraventas">Bitácora de ventas</span>
       <span class="tab" data-tab="clientes">Clientes</span>
       <span class="tab" data-tab="productos">Productos</span>
       <span class="tab tab-revision-btn" data-tab="revision">📊 Revisión</span>
@@ -1700,6 +1757,20 @@
     </div>
 
     <div id="productosList" style="margin-top:1.25rem;"></div>
+  </div>
+
+  <div id="viewBitacoraVentas" style="display:none;">
+    <p class="bitacora-instruccion">Buscá el cliente en la lista de abajo.</p>
+    <div class="toolbar">
+      <input type="text" id="buscadorBitacoraVentas" placeholder="Buscar cliente...">
+    </div>
+    <div class="bitacora-chips" id="bitacoraChips"></div>
+    <div id="bitacoraDetalle">
+      <div class="empty">
+        <h3>Elegí un cliente</h3>
+        <p>Tocá el nombre de un cliente arriba para ver o cargar charlas comerciales con él.</p>
+      </div>
+    </div>
   </div>
 
   <p class="footnote">Los datos se guardan automáticamente en esta app. Recomendamos exportar un backup (.json) cada tanto como respaldo propio.</p>
@@ -2291,6 +2362,7 @@ function refreshTodasLasVistas() {
   if ($('viewDeudores').style.display !== 'none') renderDeudores();
   if ($('viewClientes').style.display !== 'none') renderClientes();
   if ($('viewProductos').style.display !== 'none') renderProductos();
+  if ($('viewBitacoraVentas').style.display !== 'none') renderBitacoraVentas();
 }
 
 let pagoFacturaPreseleccion = null;
@@ -2793,11 +2865,13 @@ $('tabs').addEventListener('click', (e) => {
   $('viewDeudores').style.display = tab === 'deudores' ? '' : 'none';
   $('viewClientes').style.display = tab === 'clientes' ? '' : 'none';
   $('viewProductos').style.display = tab === 'productos' ? '' : 'none';
+  $('viewBitacoraVentas').style.display = tab === 'bitacoraventas' ? '' : 'none';
   if (tab === 'revision') renderRevision();
   if (tab === 'calendario') renderCalendario();
   if (tab === 'deudores') renderDeudores();
   if (tab === 'clientes') renderClientes();
   if (tab === 'productos') renderProductos();
+  if (tab === 'bitacoraventas') renderBitacoraVentas();
 });
 
 $('periodQuick').addEventListener('click', (e) => {
@@ -3093,6 +3167,7 @@ function importarBackup(file) {
     clientes.forEach(c => {
       if (c.saldo_favor == null) c.saldo_favor = 0;
       if (!c.movimientos_saldo) c.movimientos_saldo = [];
+      if (!c.bitacora_ventas) c.bitacora_ventas = [];
     });
     productos = listaProductos;
     pedidosPendientes = listaPedidosPendientes;
@@ -3305,6 +3380,7 @@ async function cargarClientes() {
   clientes.forEach(c => {
     if (c.saldo_favor == null) c.saldo_favor = 0;
     if (!c.movimientos_saldo) c.movimientos_saldo = [];
+    if (!c.bitacora_ventas) c.bitacora_ventas = [];
   });
   actualizarDatalistClientes();
   if ($('viewClientes').style.display !== 'none') renderClientes();
@@ -3326,12 +3402,13 @@ async function ajustarSaldoFavor(nombreCliente, delta, motivo, fecha) {
       nombre: nombreCliente,
       telefono: '', cuit: '', email: '',
       condicion_habitual: '', metodo_habitual: '', estimado_mensual: null,
-      saldo_favor: 0, movimientos_saldo: [], notas: ''
+      saldo_favor: 0, movimientos_saldo: [], bitacora_ventas: [], notas: ''
     };
     clientes.push(c);
   }
   if (c.saldo_favor == null) c.saldo_favor = 0;
   if (!c.movimientos_saldo) c.movimientos_saldo = [];
+  if (!c.bitacora_ventas) c.bitacora_ventas = [];
   c.saldo_favor = Math.round((c.saldo_favor + delta) * 100) / 100;
   if (c.saldo_favor < 0) c.saldo_favor = 0;
   c.movimientos_saldo.unshift({fecha, monto: delta, motivo});
@@ -3811,7 +3888,7 @@ async function guardarCliente() {
     Object.assign(c, datos);
     c.movimientos_saldo = movimientosPrevios;
   } else {
-    clientes.push({id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), ...datos, movimientos_saldo: []});
+    clientes.push({id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), ...datos, movimientos_saldo: [], bitacora_ventas: []});
   }
   await guardarClientesEnStorage();
   cerrarFormularioCliente();
@@ -3830,6 +3907,134 @@ $('btnNuevoCliente').addEventListener('click', () => abrirFormularioCliente());
 $('btnCancelarCliente').addEventListener('click', cerrarFormularioCliente);
 $('btnGuardarCliente').addEventListener('click', guardarCliente);
 $('buscadorClientes').addEventListener('input', renderClientes);
+
+let clienteBitacoraSeleccionadoId = null;
+
+function renderBitacoraVentas() {
+  const q = ($('buscadorBitacoraVentas').value || '').trim().toLowerCase();
+
+  if (clientes.length === 0) {
+    $('bitacoraChips').innerHTML = '';
+    $('bitacoraDetalle').innerHTML = `<div class="empty"><h3>Todavía no cargaste clientes</h3><p>Cargá clientes en la pestaña Clientes para poder anotar charlas con ellos acá.</p></div>`;
+    return;
+  }
+
+  if (clienteBitacoraSeleccionadoId) {
+    const c = clientes.find(x => x.id === clienteBitacoraSeleccionadoId);
+    if (c) {
+      const tieneCharlas = (c.bitacora_ventas || []).length > 0;
+      $('bitacoraChips').innerHTML = `
+        <span class="bitacora-chip activo">${escapeHtml(c.nombre)}${tieneCharlas ? ` (${c.bitacora_ventas.length})` : ''}</span>
+        <span class="bitacora-chip-cambiar" onclick="deseleccionarClienteBitacora()">✕ Cambiar de cliente</span>`;
+      renderBitacoraDetalle();
+      return;
+    }
+    clienteBitacoraSeleccionadoId = null;
+  }
+
+  if (!q) {
+    $('bitacoraChips').innerHTML = `<div class="bitacora-chips-vacio">Escribí al menos una letra para ver las coincidencias.</div>`;
+    renderBitacoraDetalle();
+    return;
+  }
+
+  const lista = clientes
+    .filter(c => c.nombre.toLowerCase().includes(q))
+    .sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+  if (lista.length === 0) {
+    $('bitacoraChips').innerHTML = `<div class="bitacora-chips-vacio">No hay clientes que coincidan con "${escapeHtml(q)}".</div>`;
+    renderBitacoraDetalle();
+    return;
+  }
+
+  $('bitacoraChips').innerHTML = lista.map(c => {
+    const tieneCharlas = (c.bitacora_ventas || []).length > 0;
+    return `<span class="bitacora-chip ${tieneCharlas ? 'tiene-charlas' : ''}" onclick="seleccionarClienteBitacora('${c.id}')">${escapeHtml(c.nombre)}${tieneCharlas ? ` (${c.bitacora_ventas.length})` : ''}</span>`;
+  }).join('');
+
+  renderBitacoraDetalle();
+}
+
+function seleccionarClienteBitacora(id) {
+  clienteBitacoraSeleccionadoId = id;
+  renderBitacoraVentas();
+}
+
+function deseleccionarClienteBitacora() {
+  clienteBitacoraSeleccionadoId = null;
+  $('buscadorBitacoraVentas').value = '';
+  renderBitacoraVentas();
+}
+
+function renderBitacoraDetalle() {
+  if (!clienteBitacoraSeleccionadoId) {
+    $('bitacoraDetalle').innerHTML = `
+      <div class="empty">
+        <h3>Elegí un cliente</h3>
+        <p>Tocá el nombre de un cliente arriba para ver o cargar charlas comerciales con él.</p>
+      </div>`;
+    return;
+  }
+  const c = clientes.find(x => x.id === clienteBitacoraSeleccionadoId);
+  if (!c) {
+    clienteBitacoraSeleccionadoId = null;
+    renderBitacoraDetalle();
+    return;
+  }
+
+  const charlas = (c.bitacora_ventas || []).slice().sort((a,b) => parseFecha(b.fecha) - parseFecha(a.fecha));
+  const charlasHTML = charlas.length
+    ? charlas.map(g => `
+      <div class="gestion-item">
+        <span class="gestion-fecha">${formatFecha(g.fecha)}</span>
+        <span class="gestion-texto">${escapeHtml(g.texto)}</span>
+        <button class="gestion-del" onclick="eliminarBitacoraEntry('${g.id}')" title="Eliminar esta charla">✕</button>
+      </div>`).join('')
+    : `<div class="gestion-vacio">Todavía no cargaste ninguna charla con este cliente.</div>`;
+
+  $('bitacoraDetalle').innerHTML = `
+    <div class="bitacora-detalle-card">
+      <div class="bitacora-detalle-titulo">${escapeHtml(c.nombre)}</div>
+      <div class="gestiones-list">${charlasHTML}</div>
+      <div class="gestion-form">
+        <input type="date" id="bv_fecha" value="${toISODate(new Date())}">
+        <input type="text" id="bv_texto" placeholder="Ej: Llamó preguntando por precios de plantillas, le mandé lista">
+        <button class="ghost" id="btnAgregarBitacoraEntry">+ Agregar charla</button>
+      </div>
+    </div>`;
+
+  $('btnAgregarBitacoraEntry').addEventListener('click', agregarBitacoraEntry);
+}
+
+async function agregarBitacoraEntry() {
+  const c = clientes.find(x => x.id === clienteBitacoraSeleccionadoId);
+  if (!c) return;
+  const fecha = $('bv_fecha').value || toISODate(new Date());
+  const texto = $('bv_texto').value.trim();
+  if (!texto) {
+    mostrarAviso('Escribí algo antes de agregar la charla.', 'error');
+    return;
+  }
+  if (!c.bitacora_ventas) c.bitacora_ventas = [];
+  c.bitacora_ventas.push({
+    id: 'bv_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+    fecha,
+    texto
+  });
+  await guardarClientesEnStorage();
+  renderBitacoraVentas();
+}
+
+async function eliminarBitacoraEntry(entryId) {
+  const c = clientes.find(x => x.id === clienteBitacoraSeleccionadoId);
+  if (!c) return;
+  c.bitacora_ventas = (c.bitacora_ventas || []).filter(g => g.id !== entryId);
+  await guardarClientesEnStorage();
+  renderBitacoraVentas();
+}
+
+$('buscadorBitacoraVentas').addEventListener('input', renderBitacoraVentas);
 
 async function cargarProductos() {
   try {
@@ -4007,6 +4212,7 @@ function activarSincronizacionEnVivo() {
       nuevos.forEach(c => {
         if (c.saldo_favor == null) c.saldo_favor = 0;
         if (!c.movimientos_saldo) c.movimientos_saldo = [];
+        if (!c.bitacora_ventas) c.bitacora_ventas = [];
       });
       clientes = nuevos;
       refreshTodasLasVistas();
