@@ -1564,6 +1564,7 @@
       <span class="rev-subnav-link" data-target="rev-comparacion">Comparación de período</span>
       <span class="rev-subnav-link" data-target="rev-evolucion">Evolución mensual</span>
       <span class="rev-subnav-link" data-target="rev-por-cliente">Por cliente</span>
+      <span class="rev-subnav-link" data-target="rev-top-productos">Top productos</span>
     </div>
 
     <div class="chart-card" id="rev-objetivo">
@@ -1636,6 +1637,17 @@
           <tr><th>Cliente</th><th>Facturas (período)</th><th>Vendido (período)</th><th>Debe actualmente</th></tr>
         </thead>
         <tbody id="clientTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="client-card" id="rev-top-productos">
+      <div class="chart-title">🏆 Top 10 productos más vendidos</div>
+      <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Histórico, según la cantidad cargada en cada factura. Solo cuentan los productos que tienen cantidad registrada.</p>
+      <table class="client-table">
+        <thead>
+          <tr><th>#</th><th>Producto</th><th>Cantidad vendida</th><th>% del total</th><th>Facturas</th></tr>
+        </thead>
+        <tbody id="topProductosBody"></tbody>
       </table>
     </div>
   </div>
@@ -2787,6 +2799,7 @@ function renderRevision() {
   renderClientTable(desde, hasta);
   renderGestionVentas();
   renderVentaObjetivoRanking();
+  renderTopProductos();
 }
 
 function renderChart(actual, previo) {
@@ -4152,6 +4165,34 @@ function historicoPorProducto() {
     });
   });
   return map;
+}
+
+function renderTopProductos() {
+  const map = historicoPorProducto();
+  const filas = Object.entries(map)
+    .filter(([_, m]) => m.tieneCantidad)
+    .map(([nombre, m]) => ({nombre, cantidad: m.cantidadTotal, facturas: m.facturas}))
+    .sort((a,b) => b.cantidad - a.cantidad)
+    .slice(0, 10);
+
+  if (filas.length === 0) {
+    $('topProductosBody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem 0;">Todavía no hay facturas con cantidad de producto cargada.</td></tr>`;
+    return;
+  }
+
+  const totalGeneral = Object.values(map).reduce((s,m) => s + m.cantidadTotal, 0);
+
+  $('topProductosBody').innerHTML = filas.map((f, i) => {
+    const porcentaje = totalGeneral > 0 ? (f.cantidad / totalGeneral * 100) : 0;
+    return `
+      <tr>
+        <td>${i === 0 ? '👑' : i + 1}</td>
+        <td class="nombre">${escapeHtml(f.nombre)}</td>
+        <td>${f.cantidad}</td>
+        <td>${porcentaje.toFixed(1)}%</td>
+        <td>${f.facturas}</td>
+      </tr>`;
+  }).join('');
 }
 
 function productoCardHTML(p) {
