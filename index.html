@@ -128,6 +128,17 @@
     letter-spacing:.01em;
     margin:0;
   }
+  .header-resumen{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:#C7CDCC;
+    margin:8px 0 0;
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .header-resumen span.alerta{color:#FFB07A;font-weight:700;}
+  .header-resumen span.ok{color:#8FD4A8;}
   .header-inner{
     display:flex;
     justify-content:space-between;
@@ -381,25 +392,31 @@
   .chip-group{display:flex;gap:6px;flex-wrap:wrap;}
   .rev-subnav{
     display:flex;
-    gap:8px;
+    gap:10px;
     flex-wrap:wrap;
-    margin:1rem 0 1.5rem;
-    padding:10px 12px;
+    margin:1rem 0 1.75rem;
+    padding:14px 16px;
     background:var(--blue-bg);
-    border-radius:10px;
+    border-radius:12px;
+    border:1px solid var(--blue);
   }
   .rev-subnav-link{
-    font-family:var(--font-body);
-    font-size:12.5px;
+    font-family:var(--font-display);
+    font-size:14px;
     font-weight:600;
     color:var(--blue-text);
     background:#fff;
-    padding:6px 12px;
-    border-radius:16px;
+    padding:10px 18px;
+    border-radius:20px;
+    border:2px solid var(--blue);
     cursor:pointer;
     white-space:nowrap;
+    box-shadow:0 1px 2px rgba(0,0,0,.05);
   }
   .rev-subnav-link:hover{background:var(--blue);color:#fff;}
+  .rev-subnav-link.active{background:var(--graphite);color:#fff;border-color:var(--graphite);box-shadow:0 2px 6px rgba(3,74,166,.35);}
+  .rev-panel{animation:rev-panel-in .15s ease-out;}
+  @keyframes rev-panel-in{from{opacity:0;}to{opacity:1;}}
   .chip{
     font-family:var(--font-body);
     font-size:13px;
@@ -869,6 +886,27 @@
   }
   .pedido-pendiente-del:hover{background:rgba(0,0,0,.06);}
   .pedidos-pendientes-vacio{font-size:12.5px;color:var(--text-muted);font-style:italic;}
+  .papelera-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:10px 4px;
+    border-bottom:1px solid var(--hairline);
+  }
+  .papelera-item:last-child{border-bottom:none;}
+  .papelera-item-nombre{
+    font-family:var(--font-body);
+    font-size:13.5px;
+    font-weight:600;
+    margin-left:8px;
+  }
+  .papelera-item-sub{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+    margin-top:3px;
+  }
   .metric-delta{
     font-size:12px;
     font-weight:600;
@@ -1391,6 +1429,7 @@
     <div>
       <p class="eyebrow">Tacca Hnos. S.A.</p>
       <h1>Control de facturación y cobranza</h1>
+      <p class="header-resumen" id="headerResumen"></p>
     </div>
     <div class="notif-dropdown">
       <button class="notif-bell" id="btnNotifBell" title="Notificaciones">
@@ -1421,6 +1460,7 @@
       <div class="dropdown-menu" id="dropdownMenu">
         <button id="btnExportar">Exportar backup (.json)</button>
         <button id="btnImportar">Importar backup (.json)</button>
+        <button id="btnAbrirPapelera">🗑️ Papelera de reciclaje</button>
         <input type="file" id="inputImportar" accept=".json" style="display:none;">
       </div>
     </div>
@@ -1554,101 +1594,112 @@
     <p class="period-label" id="periodLabel"></p>
     <div class="toolbar" style="margin-top:.5rem;margin-bottom:0;">
       <button class="primary" id="btnDescargarPDF">📄 Facturas a vencer (PDF)</button>
-      <button class="ghost" id="btnExportarRevisionPDF">📄 Exportar Revisión (PDF)</button>
+      <button class="ghost" id="btnExportarRevisionPDF">📄 Exportar Revisión completa (PDF)</button>
       <button class="ghost" id="btnExportarRevisionExcel">📊 Exportar a Excel (.csv)</button>
     </div>
 
     <div class="rev-subnav" id="revSubnav">
-      <span class="rev-subnav-link" data-target="rev-objetivo">Objetivo del mes</span>
-      <span class="rev-subnav-link" data-target="rev-quien-venderle">A quién venderle más</span>
-      <span class="rev-subnav-link" data-target="rev-comparacion">Comparación de período</span>
-      <span class="rev-subnav-link" data-target="rev-evolucion">Evolución mensual</span>
-      <span class="rev-subnav-link" data-target="rev-por-cliente">Por cliente</span>
-      <span class="rev-subnav-link" data-target="rev-top-productos">Top productos</span>
+      <span class="rev-subnav-link active" data-target="panel-objetivo">Objetivo del mes</span>
+      <span class="rev-subnav-link" data-target="panel-quien-venderle">A quién venderle más</span>
+      <span class="rev-subnav-link" data-target="panel-comparacion">Comparación de período</span>
+      <span class="rev-subnav-link" data-target="panel-evolucion">Evolución mensual</span>
+      <span class="rev-subnav-link" data-target="panel-por-cliente">Por cliente</span>
+      <span class="rev-subnav-link" data-target="panel-top-productos">Top productos</span>
     </div>
 
-    <div class="chart-card" id="rev-objetivo">
-      <div class="chart-title">📦 Gestión de ventas y pedidos — <span id="gestionMesLabel"></span></div>
-      <div class="objetivo-row">
-        <div class="objetivo-input-group">
-          <div>
-            <label>Objetivo mensual (ítems)</label>
-            <input type="number" id="objetivoMensualInput" min="0" step="1" placeholder="Ej: 90000">
+    <div class="rev-panel" id="panel-objetivo">
+      <div class="chart-card" id="rev-objetivo">
+        <div class="chart-title">📦 Gestión de ventas y pedidos — <span id="gestionMesLabel"></span></div>
+        <div class="objetivo-row">
+          <div class="objetivo-input-group">
+            <div>
+              <label>Objetivo mensual (ítems)</label>
+              <input type="number" id="objetivoMensualInput" min="0" step="1" placeholder="Ej: 90000">
+            </div>
+            <button class="ghost" id="btnGuardarObjetivo">Guardar objetivo</button>
           </div>
-          <button class="ghost" id="btnGuardarObjetivo">Guardar objetivo</button>
+        </div>
+        <div class="stats" id="gestionStats"></div>
+
+        <div class="pedidos-pendientes-block">
+          <div class="chart-title" style="font-size:14px;margin-top:1.25rem;">Pedidos pendientes de facturar</div>
+          <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-2px 0 10px;">Pedidos ya confirmados que todavía no se facturaron. Se suman a la proyección del mes; cuando factures uno, quitalo de acá.</p>
+          <div class="pedido-pendiente-form">
+            <input type="text" id="pp_cliente" placeholder="Cliente (opcional)">
+            <input type="number" id="pp_cantidad" placeholder="Cantidad (ítems)" min="0" step="1">
+            <input type="text" id="pp_nota" placeholder="Nota (opcional)">
+            <button class="ghost" id="btnAgregarPedidoPendiente">+ Agregar</button>
+          </div>
+          <div id="pedidosPendientesList"></div>
         </div>
       </div>
-      <div class="stats" id="gestionStats"></div>
+    </div>
 
-      <div class="pedidos-pendientes-block">
-        <div class="chart-title" style="font-size:14px;margin-top:1.25rem;">Pedidos pendientes de facturar</div>
-        <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-2px 0 10px;">Pedidos ya confirmados que todavía no se facturaron. Se suman a la proyección del mes; cuando factures uno, quitalo de acá.</p>
-        <div class="pedido-pendiente-form">
-          <input type="text" id="pp_cliente" placeholder="Cliente (opcional)">
-          <input type="number" id="pp_cantidad" placeholder="Cantidad (ítems)" min="0" step="1">
-          <input type="text" id="pp_nota" placeholder="Nota (opcional)">
-          <button class="ghost" id="btnAgregarPedidoPendiente">+ Agregar</button>
-        </div>
-        <div id="pedidosPendientesList"></div>
+    <div class="rev-panel" id="panel-quien-venderle" style="display:none;">
+      <div class="client-card" id="rev-quien-venderle">
+        <div class="chart-title">A quién venderle más</div>
+        <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Ordenado de mayor a menor volumen. Usa el promedio real (por compra) cuando ya tenés cantidades cargadas para ese cliente; si todavía no hay datos reales, usa el promedio estimado por mes que cargaste en su ficha.</p>
+        <table class="client-table">
+          <thead>
+            <tr><th>Cliente</th><th>Promedio</th><th>Detalle</th><th>Última compra</th></tr>
+          </thead>
+          <tbody id="ventaObjetivoRankingBody"></tbody>
+        </table>
       </div>
     </div>
 
-    <div class="client-card" id="rev-quien-venderle">
-      <div class="chart-title">A quién venderle más</div>
-      <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Ordenado de mayor a menor volumen. Usa el promedio real (por compra) cuando ya tenés cantidades cargadas para ese cliente; si todavía no hay datos reales, usa el promedio estimado por mes que cargaste en su ficha.</p>
-      <table class="client-table">
-        <thead>
-          <tr><th>Cliente</th><th>Promedio</th><th>Detalle</th><th>Última compra</th></tr>
-        </thead>
-        <tbody id="ventaObjetivoRankingBody"></tbody>
-      </table>
-    </div>
-
-    <div class="stats" id="revStats"></div>
-
-    <div class="chart-card" id="rev-comparacion">
-      <div class="chart-title">Vendido y cobrado vs. período anterior</div>
-      <svg id="revChart" viewBox="0 0 560 220" style="width:100%;height:auto;"></svg>
-      <div class="chart-legend">
-        <span><span class="legend-dot" style="background:#2B6E7E;"></span>Período actual</span>
-        <span><span class="legend-dot" style="background:#B4B2A9;"></span>Período anterior</span>
-      </div>
-    </div>
-
-    <div class="chart-card" id="rev-evolucion">
-      <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-        <span>Evolución mensual</span>
-        <div class="chip-group" id="evolucionRango">
-          <span class="chip active" data-meses="6">6 meses</span>
-          <span class="chip" data-meses="12">12 meses</span>
+    <div class="rev-panel" id="panel-comparacion" style="display:none;">
+      <div class="stats" id="revStats"></div>
+      <div class="chart-card" id="rev-comparacion">
+        <div class="chart-title">Vendido y cobrado vs. período anterior</div>
+        <svg id="revChart" viewBox="0 0 560 220" style="width:100%;height:auto;"></svg>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#2B6E7E;"></span>Período actual</span>
+          <span><span class="legend-dot" style="background:#B4B2A9;"></span>Período anterior</span>
         </div>
       </div>
-      <svg id="evolChart" viewBox="0 0 560 240" style="width:100%;height:auto;"></svg>
-      <div class="chart-legend">
-        <span><span class="legend-dot" style="background:#2B6E7E;"></span>Vendido</span>
-        <span><span class="legend-dot" style="background:#2F8557;"></span>Cobrado</span>
+    </div>
+
+    <div class="rev-panel" id="panel-evolucion" style="display:none;">
+      <div class="chart-card" id="rev-evolucion">
+        <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span>Evolución mensual</span>
+          <div class="chip-group" id="evolucionRango">
+            <span class="chip active" data-meses="6">6 meses</span>
+            <span class="chip" data-meses="12">12 meses</span>
+          </div>
+        </div>
+        <svg id="evolChart" viewBox="0 0 560 240" style="width:100%;height:auto;"></svg>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#2B6E7E;"></span>Vendido</span>
+          <span><span class="legend-dot" style="background:#2F8557;"></span>Cobrado</span>
+        </div>
       </div>
     </div>
 
-    <div class="client-card" id="rev-por-cliente">
-      <div class="chart-title">Por cliente (en el período)</div>
-      <table class="client-table">
-        <thead>
-          <tr><th>Cliente</th><th>Facturas (período)</th><th>Vendido (período)</th><th>Debe actualmente</th></tr>
-        </thead>
-        <tbody id="clientTableBody"></tbody>
-      </table>
+    <div class="rev-panel" id="panel-por-cliente" style="display:none;">
+      <div class="client-card" id="rev-por-cliente">
+        <div class="chart-title">Por cliente (en el período)</div>
+        <table class="client-table">
+          <thead>
+            <tr><th>Cliente</th><th>Facturas (período)</th><th>Vendido (período)</th><th>Debe actualmente</th></tr>
+          </thead>
+          <tbody id="clientTableBody"></tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="client-card" id="rev-top-productos">
-      <div class="chart-title">🏆 Top 10 productos más vendidos</div>
-      <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Histórico, según la cantidad cargada en cada factura. Solo cuentan los productos que tienen cantidad registrada.</p>
-      <table class="client-table">
-        <thead>
-          <tr><th>#</th><th>Producto</th><th>Cantidad vendida</th><th>% del total</th><th>Facturas</th></tr>
-        </thead>
-        <tbody id="topProductosBody"></tbody>
-      </table>
+    <div class="rev-panel" id="panel-top-productos" style="display:none;">
+      <div class="client-card" id="rev-top-productos">
+        <div class="chart-title">🏆 Top 10 productos más vendidos</div>
+        <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:-4px 0 12px;">Histórico, según la cantidad cargada en cada factura. Solo cuentan los productos que tienen cantidad registrada.</p>
+        <table class="client-table">
+          <thead>
+            <tr><th>#</th><th>Producto</th><th>Cantidad vendida</th><th>% del total</th><th>Facturas</th></tr>
+          </thead>
+          <tbody id="topProductosBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1820,6 +1871,8 @@ let clientes = [];
 let editandoClienteId = null;
 let productos = [];
 let editandoProductoId = null;
+let papelera = [];
+const PAPELERA_DIAS_RETENCION = 7;
 
 function mostrarAviso(mensaje, tipo, guardar) {
   const toast = document.createElement('div');
@@ -2018,6 +2071,7 @@ async function cargarVentas() {
   render();
   avisarVencimientosHoy();
   avisarClientesMorososCercanos();
+  avisarChequesPorDepositarManana();
 }
 
 async function yaSeAvisoHoy(clave) {
@@ -2065,12 +2119,134 @@ async function avisarClientesMorososCercanos() {
   }
 }
 
+async function avisarChequesPorDepositarManana() {
+  const manana = new Date();
+  manana.setDate(manana.getDate() + 1);
+  const mananaStr = toISODate(manana);
+
+  const cheques = [];
+  ventas.forEach(v => {
+    (v.pagos || []).forEach(p => {
+      if (p.fecha_cobro === mananaStr) cheques.push({venta: v, pago: p});
+    });
+  });
+  if (cheques.length === 0) return;
+  if (await yaSeAvisoHoy('cheques_manana')) return;
+
+  if (cheques.length <= 3) {
+    cheques.forEach(c => {
+      mostrarAviso(`🏦 Mañana se deposita un cheque de ${formatMonto(c.pago.monto)} de ${c.venta.cliente} (Fact. ${c.venta.factura}).`, null, true);
+    });
+  } else {
+    const total = cheques.reduce((s,c) => s + Number(c.pago.monto), 0);
+    mostrarAviso(`🏦 Mañana se depositan ${cheques.length} cheques por un total de ${formatMonto(total)}.`, null, true);
+  }
+}
+
 async function guardarEnStorage() {
   try {
     await window.storage.set('ventas', JSON.stringify(ventas), false);
   } catch (e) {
     mostrarAviso('No se pudo guardar. Probá de nuevo.', 'error');
   }
+}
+
+async function cargarPapelera() {
+  try {
+    const result = await window.storage.get('papelera', false);
+    papelera = result ? JSON.parse(result.value) : [];
+  } catch (e) {
+    papelera = [];
+  }
+  const hoyMs = Date.now();
+  const antes = papelera.length;
+  papelera = papelera.filter(p => (hoyMs - p.eliminadoEn) < PAPELERA_DIAS_RETENCION * 86400000);
+  if (papelera.length !== antes) await guardarPapeleraEnStorage();
+}
+
+async function guardarPapeleraEnStorage() {
+  try {
+    await window.storage.set('papelera', JSON.stringify(papelera), false);
+  } catch (e) { /* noop */ }
+}
+
+async function enviarAPapelera(tipo, item) {
+  papelera.unshift({
+    id: 'pap_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    tipo,
+    item,
+    eliminadoEn: Date.now()
+  });
+  await guardarPapeleraEnStorage();
+}
+
+async function restaurarDePapelera(papeleraId) {
+  const entrada = papelera.find(p => p.id === papeleraId);
+  if (!entrada) return;
+
+  if (entrada.tipo === 'venta') {
+    ventas.push(entrada.item);
+    await guardarEnStorage();
+  } else if (entrada.tipo === 'cliente') {
+    clientes.push(entrada.item);
+    await guardarClientesEnStorage();
+  } else if (entrada.tipo === 'producto') {
+    productos.push(entrada.item);
+    await guardarProductosEnStorage();
+  }
+
+  papelera = papelera.filter(p => p.id !== papeleraId);
+  await guardarPapeleraEnStorage();
+  refreshTodasLasVistas();
+  renderPapelera();
+  mostrarAviso('Restaurado correctamente.');
+}
+
+function nombrePapeleraItem(entrada) {
+  if (entrada.tipo === 'venta') return `Fact. ${entrada.item.factura} — ${entrada.item.cliente}`;
+  if (entrada.tipo === 'cliente') return entrada.item.nombre;
+  if (entrada.tipo === 'producto') return entrada.item.nombre;
+  return '—';
+}
+
+function etiquetaTipoPapelera(tipo) {
+  if (tipo === 'venta') return 'Venta';
+  if (tipo === 'cliente') return 'Cliente';
+  if (tipo === 'producto') return 'Producto';
+  return tipo;
+}
+
+function renderPapelera() {
+  if (papelera.length === 0) {
+    $('papeleraList').innerHTML = `<div class="pedidos-pendientes-vacio">La papelera está vacía.</div>`;
+    return;
+  }
+  $('papeleraList').innerHTML = papelera.map(p => {
+    const diasRestantes = Math.max(0, PAPELERA_DIAS_RETENCION - Math.floor((Date.now() - p.eliminadoEn) / 86400000));
+    return `
+      <div class="papelera-item">
+        <div>
+          <span class="badge normal" style="font-size:10.5px;">${etiquetaTipoPapelera(p.tipo)}</span>
+          <span class="papelera-item-nombre">${escapeHtml(nombrePapeleraItem(p))}</span>
+          <div class="papelera-item-sub">Eliminado el ${formatFechaObj(new Date(p.eliminadoEn))} · se borra en ${diasRestantes} día${diasRestantes===1?'':'s'}</div>
+        </div>
+        <button class="ghost" onclick="restaurarDePapelera('${p.id}')">↩ Restaurar</button>
+      </div>`;
+  }).join('');
+}
+
+function abrirPapelera() {
+  renderPapelera();
+  const btnCerrar = $('btnCerrarPapelera');
+  if (btnCerrar && !btnCerrar.dataset.wired) {
+    btnCerrar.dataset.wired = '1';
+    btnCerrar.addEventListener('click', cerrarPapelera);
+  }
+  $('papeleraOverlay').classList.add('open');
+}
+
+function cerrarPapelera() {
+  $('papeleraOverlay').classList.remove('open');
 }
 
 function estadoDe(venta) {
@@ -2398,8 +2574,10 @@ async function marcarPagado(id) {
 }
 
 async function eliminarVenta(id) {
-  const ok = await confirmarAccion('¿Eliminar esta venta? No se puede deshacer.');
+  const ok = await confirmarAccion('¿Eliminar esta venta? Va a quedar en la papelera de reciclaje por 7 días por si necesitás recuperarla.');
   if (!ok) return;
+  const item = ventas.find(x => x.id === id);
+  if (item) await enviarAPapelera('venta', item);
   ventas = ventas.filter(x => x.id !== id);
   await guardarEnStorage();
   refreshTodasLasVistas();
@@ -2415,6 +2593,27 @@ function refreshTodasLasVistas() {
   if ($('viewClientes').style.display !== 'none') renderClientes();
   if ($('viewProductos').style.display !== 'none') renderProductos();
   if ($('viewBitacoraVentas').style.display !== 'none') renderBitacoraVentas();
+  renderHeaderResumen();
+}
+
+function renderHeaderResumen() {
+  const hoyStr = toISODate(new Date());
+  const vencenHoy = ventas.filter(v => v.estado !== 'pagado' && v.fecha_vencimiento === hoyStr).length;
+
+  const gestion = calcularGestionVentasMes();
+  const itemsPendientes = totalItemsPedidosPendientes();
+  const proyeccion = gestion.itemsVendidos + itemsPendientes;
+  const pctObjetivo = objetivoMensual > 0 ? Math.round((proyeccion / objetivoMensual) * 100) : null;
+
+  const partes = [];
+  partes.push(vencenHoy > 0
+    ? `<span class="alerta">⛔ ${vencenHoy} vence${vencenHoy===1?'':'n'} hoy</span>`
+    : `<span class="ok">✅ nada vence hoy</span>`);
+  if (pctObjetivo != null) {
+    partes.push(`🎯 ${pctObjetivo}% del objetivo del mes`);
+  }
+
+  $('headerResumen').innerHTML = partes.join('<span style="opacity:.4;"> · </span>');
 }
 
 let pagoFacturaPreseleccion = null;
@@ -2947,8 +3146,11 @@ $('evolucionRango').addEventListener('click', (e) => {
 $('btnGuardarObjetivo').addEventListener('click', guardarObjetivoMensual);
 $('revSubnav').addEventListener('click', (e) => {
   if (!e.target.classList.contains('rev-subnav-link')) return;
+  document.querySelectorAll('#revSubnav .rev-subnav-link').forEach(el => el.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('#viewRevision .rev-panel').forEach(panel => { panel.style.display = 'none'; });
   const destino = $(e.target.dataset.target);
-  if (destino) destino.scrollIntoView({behavior:'smooth', block:'start'});
+  if (destino) destino.style.display = '';
 });
 $('btnAgregarPedidoPendiente').addEventListener('click', agregarPedidoPendiente);
 
@@ -3061,11 +3263,11 @@ function exportarRevisionPDF() {
   const actual = metricasPeriodo(desde, hasta);
   const pendienteActual = ventas.filter(v => v.estado !== 'pagado').reduce((s,v) => s + saldoPendiente(v), 0);
 
+  // Por cliente (período)
   const map = desglosePorClientePeriodo(desde, hasta);
   const filas = Object.entries(map)
     .filter(([_, c]) => c.facturasPeriodo > 0 || c.debeActual > 0)
     .sort((a,b) => b[1].debeActual - a[1].debeActual || b[1].vendidoPeriodo - a[1].vendidoPeriodo);
-
   const filasHTML = filas.map(([nombre, c]) => `
     <tr>
       <td>${escapeHtml(nombre)}</td>
@@ -3074,11 +3276,60 @@ function exportarRevisionPDF() {
       <td class="${c.debeActual > 0 ? 'vencida' : ''}">${formatMonto(c.debeActual)}</td>
     </tr>`).join('');
 
+  // Gestión de ventas y pedidos pendientes
+  const gestionMes = calcularGestionVentasMes();
+  const itemsPendientes = totalItemsPedidosPendientes();
+  const proyeccion = gestionMes.itemsVendidos + itemsPendientes;
+  const diferencia = objetivoMensual ? Math.round(proyeccion - objetivoMensual) : null;
+  const pedidosPendientesHTML = pedidosPendientes.map(p => `
+    <tr>
+      <td>${escapeHtml(p.cliente || '—')}</td>
+      <td>${p.cantidad}</td>
+      <td>${escapeHtml(p.nota || '—')}</td>
+      <td>${formatFecha(p.fecha)}</td>
+    </tr>`).join('');
+
+  // A quién venderle más
+  const rankingVenderle = calcularRankingVentaObjetivo();
+  const rankingVenderleHTML = rankingVenderle.map(f => `
+    <tr>
+      <td>${escapeHtml(f.nombre)}</td>
+      <td>${Math.round(f.valor)} (${f.fuente === 'real' ? 'real' : 'estimado'})</td>
+      <td>${escapeHtml(f.detalle)}</td>
+    </tr>`).join('');
+
+  // Evolución mensual
+  const evolucion = calcularEvolucionMensual(evolucionMeses);
+  const evolucionHTML = evolucion.map(m => `
+    <tr>
+      <td>${m.label}</td>
+      <td>${formatMonto(m.vendido)}</td>
+      <td>${formatMonto(m.cobrado)}</td>
+    </tr>`).join('');
+
+  // Top 10 productos
+  const mapProductos = historicoPorProducto();
+  const filasProductos = Object.entries(mapProductos)
+    .filter(([_, m]) => m.tieneCantidad)
+    .map(([nombre, m]) => ({nombre, cantidad: m.cantidadTotal, facturas: m.facturas}))
+    .sort((a,b) => b.cantidad - a.cantidad)
+    .slice(0, 10);
+  const totalGeneralProductos = Object.values(mapProductos).reduce((s,m) => s + m.cantidadTotal, 0);
+  const topProductosHTML = filasProductos.map((f,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${escapeHtml(f.nombre)}</td>
+      <td>${f.cantidad}</td>
+      <td>${totalGeneralProductos > 0 ? (f.cantidad/totalGeneralProductos*100).toFixed(1) : '0.0'}%</td>
+      <td>${f.facturas}</td>
+    </tr>`).join('');
+
   $('printArea').innerHTML = `
     <div class="print-header">
-      <h1>Tacca Hnos. S.A. — Revisión de período</h1>
+      <h1>Tacca Hnos. S.A. — Revisión completa</h1>
       <p>${formatRangoLabel(desde, hasta)} · generado el ${formatFechaObj(hoy())}</p>
     </div>
+
     <table class="print-table">
       <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
       <tbody>
@@ -3087,10 +3338,48 @@ function exportarRevisionPDF() {
         <tr><td>Pendiente actual (a hoy)</td><td>${formatMonto(pendienteActual)}</td></tr>
       </tbody>
     </table>
-    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">Por cliente</p>
+
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">Objetivo mensual — ${$('gestionMesLabel').textContent}</p>
+    <table class="print-table">
+      <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
+      <tbody>
+        <tr><td>Objetivo mensual (ítems)</td><td>${objetivoMensual || 'sin cargar'}</td></tr>
+        <tr><td>Pedidos este mes</td><td>${gestionMes.pedidos}</td></tr>
+        <tr><td>Ítems vendidos este mes</td><td>${gestionMes.itemsVendidos}</td></tr>
+        <tr><td>Ítems en pedidos pendientes de facturar</td><td>${itemsPendientes}</td></tr>
+        <tr><td>Proyección (facturado + pendiente)</td><td>${proyeccion}${diferencia != null ? ` (${diferencia >= 0 ? '+' : ''}${diferencia} vs. objetivo)` : ''}</td></tr>
+      </tbody>
+    </table>
+
+    ${pedidosPendientes.length > 0 ? `
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">Pedidos pendientes de facturar (detalle)</p>
+    <table class="print-table">
+      <thead><tr><th>Cliente</th><th>Cantidad</th><th>Nota</th><th>Cargado el</th></tr></thead>
+      <tbody>${pedidosPendientesHTML}</tbody>
+    </table>` : ''}
+
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">A quién venderle más</p>
+    <table class="print-table">
+      <thead><tr><th>Cliente</th><th>Promedio</th><th>Detalle</th></tr></thead>
+      <tbody>${rankingVenderleHTML || '<tr><td colspan="3" style="text-align:center;">Sin datos suficientes.</td></tr>'}</tbody>
+    </table>
+
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">Evolución mensual (últimos ${evolucionMeses} meses)</p>
+    <table class="print-table">
+      <thead><tr><th>Mes</th><th>Vendido</th><th>Cobrado</th></tr></thead>
+      <tbody>${evolucionHTML}</tbody>
+    </table>
+
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">Por cliente (en el período)</p>
     <table class="print-table">
       <thead><tr><th>Cliente</th><th>Facturas (período)</th><th>Vendido (período)</th><th>Debe actualmente</th></tr></thead>
       <tbody>${filasHTML || '<tr><td colspan="4" style="text-align:center;">Sin actividad en el período.</td></tr>'}</tbody>
+    </table>
+
+    <p style="font-family:var(--font-body);font-weight:700;font-size:13px;margin-top:20px;">🏆 Top 10 productos más vendidos (histórico)</p>
+    <table class="print-table">
+      <thead><tr><th>#</th><th>Producto</th><th>Cantidad</th><th>% del total</th><th>Facturas</th></tr></thead>
+      <tbody>${topProductosHTML || '<tr><td colspan="5" style="text-align:center;">Sin datos suficientes.</td></tr>'}</tbody>
     </table>
   `;
   window.print();
@@ -3173,7 +3462,8 @@ function exportarBackup() {
     clientes: clientes,
     productos: productos,
     pedidos_pendientes: pedidosPendientes,
-    objetivo_mensual_items: objetivoMensual
+    objetivo_mensual_items: objetivoMensual,
+    papelera: papelera
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -3224,11 +3514,13 @@ function importarBackup(file) {
     });
     productos = listaProductos;
     pedidosPendientes = listaPedidosPendientes;
+    if (Array.isArray(data.papelera)) papelera = data.papelera;
     if (data.objetivo_mensual_items != null) objetivoMensual = Number(data.objetivo_mensual_items) || 0;
     await guardarEnStorage();
     await guardarClientesEnStorage();
     await guardarProductosEnStorage();
     await guardarPedidosPendientesEnStorage();
+    await guardarPapeleraEnStorage();
     if (data.objetivo_mensual_items != null) {
       try { await window.storage.set('objetivo_mensual_items', String(objetivoMensual), false); } catch (e) { /* noop */ }
     }
@@ -3260,6 +3552,10 @@ $('inputImportar').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) importarBackup(file);
   e.target.value = '';
+});
+$('btnAbrirPapelera').addEventListener('click', () => {
+  $('dropdownMenu').classList.remove('open');
+  abrirPapelera();
 });
 
 $('btnDescargarPDF').addEventListener('click', generarPDFVencimientos);
@@ -3949,8 +4245,10 @@ async function guardarCliente() {
 }
 
 async function eliminarCliente(id) {
-  const ok = await confirmarAccion('¿Eliminar esta ficha de cliente? Las ventas ya cargadas no se van a borrar.');
+  const ok = await confirmarAccion('¿Eliminar esta ficha de cliente? Las ventas ya cargadas no se van a borrar. La ficha va a quedar en la papelera por 7 días.');
   if (!ok) return;
+  const item = clientes.find(x => x.id === id);
+  if (item) await enviarAPapelera('cliente', item);
   clientes = clientes.filter(x => x.id !== id);
   await guardarClientesEnStorage();
   renderClientes();
@@ -4286,8 +4584,10 @@ async function guardarProducto() {
 }
 
 async function eliminarProducto(id) {
-  const ok = await confirmarAccion('¿Eliminar esta ficha de producto? Las ventas ya cargadas no se van a borrar.');
+  const ok = await confirmarAccion('¿Eliminar esta ficha de producto? Las ventas ya cargadas no se van a borrar. La ficha va a quedar en la papelera por 7 días.');
   if (!ok) return;
+  const item = productos.find(x => x.id === id);
+  if (item) await enviarAPapelera('producto', item);
   productos = productos.filter(x => x.id !== id);
   await guardarProductosEnStorage();
   renderProductos();
@@ -4349,6 +4649,14 @@ function activarSincronizacionEnVivo() {
     objetivoMensual = Number(value) || 0;
     refreshTodasLasVistas();
   });
+
+  window.storage.watch('papelera', (value) => {
+    if (value == null) return;
+    try {
+      papelera = JSON.parse(value);
+      if ($('papeleraOverlay').classList.contains('open')) renderPapelera();
+    } catch (e) { /* noop */ }
+  });
 }
 
 (async () => {
@@ -4359,6 +4667,8 @@ function activarSincronizacionEnVivo() {
   await cargarProductos();
   await cargarObjetivoMensual();
   await cargarPedidosPendientes();
+  await cargarPapelera();
+  renderHeaderResumen();
   activarSincronizacionEnVivo();
 })();
 </script>
@@ -4371,6 +4681,17 @@ function activarSincronizacionEnVivo() {
     <div class="modal-actions">
       <button class="ghost" id="modalCancelar">Cancelar</button>
       <button class="primary" id="modalConfirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="papeleraOverlay">
+  <div class="modal-box" style="max-width:540px;">
+    <h2 style="font-family:var(--font-display);font-size:18px;font-weight:600;margin:0 0 4px;">🗑️ Papelera de reciclaje</h2>
+    <p style="font-family:var(--font-body);font-size:12.5px;color:var(--text-muted);margin:0 0 16px;">Lo que borrás (ventas, clientes, productos) queda acá 7 días antes de eliminarse para siempre.</p>
+    <div id="papeleraList" style="max-height:400px;overflow-y:auto;"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="ghost" id="btnCerrarPapelera">Cerrar</button>
     </div>
   </div>
 </div>
